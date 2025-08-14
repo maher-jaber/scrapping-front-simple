@@ -47,7 +47,7 @@
 										</span>
 										<select id="region" name="region" class="form-select form-select-lg py-3">
 											<option value="">Sélectionnez une région</option>
-										
+
 										</select>
 									</div>
 								</div>
@@ -60,21 +60,20 @@
 										<select id="departement" name="departement"
 											class="form-select form-select-lg py-3">
 											<option value="">Sélectionnez un département</option>
-											
+
 										</select>
 									</div>
 								</div>
 								<div class="col-md-3">
 									<label for="ville" class="form-label fw-bold">Ville</label>
-									<div class="input-group">
+									<div class="input-group position-relative">
 										<span class="input-group-text">
 											<i class="bi bi-pin-map"></i>
 										</span>
-										<select id="ville" name="ville" class="form-select form-select-lg py-3">
-											<option value="">Sélectionnez une ville</option>
-											<option value="paris-1">Paris 1er</option>
-											<option value="marseille">Marseille</option>
-										</select>
+										<input type="text" id="ville" name="ville" class="form-control form-control-lg"
+											placeholder="Tapez le nom de la ville">
+										<div id="ville-autocomplete" class="autocomplete-items position-absolute w-100">
+										</div>
 									</div>
 								</div>
 							</div>
@@ -136,7 +135,7 @@
 						<div class="card-body p-0">
 							<div class="d-flex justify-content-end mb-3">
 								<button id="exportBtn" class="btn btn-success">
-									<i class="bi bi-file-earmark-excel me-2"></i>Exporter en Excel
+									<i class="bi bi-file-earmark-excel me-2"></i>Exporter en CSV
 								</button>
 							</div>
 							<div class="table-responsive">
@@ -482,19 +481,19 @@
 			const regionSelect = document.getElementById('region');
 			const regResp = await fetch('reg_names.json');
 			const regData = await regResp.json();
-		
+
 			regData.forEach(region => {
 				const opt = document.createElement('option');
 				opt.value = region;
 				opt.textContent = region;
 				regionSelect.appendChild(opt);
 			});
-		
+
 			// Charger départements
 			const depSelect = document.getElementById('departement');
 			const depResp = await fetch('dep_names.json');
 			const depData = await depResp.json();
-		
+
 			depData.forEach(dep => {
 				const opt = document.createElement('option');
 				opt.value = dep;
@@ -502,10 +501,53 @@
 				depSelect.appendChild(opt);
 			});
 		}
-		
+
 		// Lancer le chargement après que la page soit prête
 		document.addEventListener('DOMContentLoaded', chargerSelectOptions);
-		</script>
+	</script>
+	<script>
+		let franceData = null;
+
+		async function loadFranceData() {
+			if (!franceData) {
+				const resp = await fetch('france.json');
+				franceData = await resp.json();
+			}
+		}
+
+		const villeInput = document.getElementById('ville');
+		const villeList = document.getElementById('ville-autocomplete');
+
+		villeInput.addEventListener('input', async function () {
+			const query = this.value.trim().toLowerCase();
+			villeList.innerHTML = '';
+
+			if (query.length < 2) return; // éviter de lancer sur 1 lettre
+
+			await loadFranceData();
+
+			const results = franceData
+				.filter(v => v.Nom_commune && v.Nom_commune.toLowerCase().includes(query))
+				.slice(0, 30); // limiter à 30 suggestions max
+
+			results.forEach(ville => {
+				const div = document.createElement('div');
+				div.classList.add('autocomplete-item');
+				div.textContent = ville.Nom_commune;
+				div.addEventListener('click', () => {
+					villeInput.value = ville.Nom_commune;
+					villeList.innerHTML = '';
+				});
+				villeList.appendChild(div);
+			});
+		});
+
+		// Fermer si clic à l’extérieur
+		document.addEventListener('click', (e) => {
+			if (e.target !== villeInput) villeList.innerHTML = '';
+		});
+	</script>
+
 </body>
 
 </html>
