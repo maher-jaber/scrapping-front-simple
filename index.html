@@ -355,9 +355,9 @@
 			                <tbody>`;
 			
 			            json.results.forEach(r => {
-			                const website = r['Site Web'] ? `<a href="${r['Site Web']}" target="_blank" class="text-decoration-none">Visiter <i class="bi bi-box-arrow-up-right"></i></a>` : 'N/A';
+			                const website = r['Site Web'] ? `<a href="${r['Site Web'].startsWith('http') ? r['Site Web'] : 'https://' + r['Site Web']}" target="_blank" class="text-decoration-none">${r['Site Web']} <i class="bi bi-box-arrow-up-right"></i></a>` : 'N/A';
 			                const phone = r.Téléphone ? `<a href="tel:${r.Téléphone}" class="text-decoration-none">${r.Téléphone}</a>` : 'N/A';
-			                
+							
 			                html += `<tr>
 			                    <td class="fw-bold">${r.Nom || 'N/A'}</td>
 			                    <td>${r.Adresse || 'N/A'}</td>
