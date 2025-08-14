@@ -309,7 +309,7 @@
 			if (!this.value) return;
 
 			// Charger le JSON depuis le répertoire public
-			const response = await fetch('naf-activity.json');
+			const response = await fetch('naf-activity-gmaps.json');
 			const data = await response.json();
 
 			data.forEach(item => {
