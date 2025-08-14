@@ -318,7 +318,7 @@
 			
 			    const location = ville || departement || region;
 			    const source = document.querySelector('input[name="source"]:checked').value;
-			    const apiUrl = source === 'googlemaps' ? 'http://127.0.0.1:9000/scrape/googlemaps' : 'http://127.0.0.1:9000/scrape/pagesjaunes';
+			    const apiUrl = source === 'googlemaps' ? 'https://d2af787e09d1.ngrok-free.app/scrape/googlemaps' : 'https://d2af787e09d1.ngrok-free.app/scrape/pagesjaunes';
 			
 			    const payload = { query, location, max_results };
 			
