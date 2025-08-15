@@ -252,6 +252,8 @@
 		}
 	</style>
 
+<link href="https://cdn.jsdelivr.net/npm/tom-select/dist/css/tom-select.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/tom-select/dist/js/tom-select.complete.min.js"></script>
 
 	<script>
 		document.getElementById('exportBtn').addEventListener('click', function () {
@@ -339,7 +341,7 @@
 			if (e.target !== input) listContainer.innerHTML = '';
 		});
 	</script>
-	</script>
+	
 	<script>
 		// Ajouter ce script pour gérer la sélection visuelle
 		document.querySelectorAll('.source-card').forEach(card => {
@@ -501,34 +503,62 @@
 	</script>
 	<script>
 		async function chargerSelectOptions() {
-			// Charger régions
-			const regionSelect = document.getElementById('region');
-			const regResp = await fetch('reg_names.json');
-			const regData = await regResp.json();
+    // Charger régions
+    const regionSelect = document.getElementById('region');
+    const regResp = await fetch('reg_names.json');
+    const regData = await regResp.json();
 
-			regData.forEach(region => {
-				const opt = document.createElement('option');
-				opt.value = region;
-				opt.textContent = region;
-				regionSelect.appendChild(opt);
-			});
+    regData.sort().forEach(region => {
+        const opt = document.createElement('option');
+        opt.value = region;
+        opt.textContent = region;
+        regionSelect.appendChild(opt);
+    });
 
-			// Charger départements
-			const depSelect = document.getElementById('departement');
-			const depResp = await fetch('dep_names.json');
-			const depData = await depResp.json();
+    // Initialiser Tom Select pour les régions (optionnel)
+    new TomSelect('#region', {
+        create: false,
+        sortField: { field: "text", direction: "asc" }
+    });
 
-			depData.forEach(dep => {
-				const opt = document.createElement('option');
-				opt.value = dep;
-				opt.textContent = dep;
-				depSelect.appendChild(opt);
-			});
-		}
+    // Charger départements
+    const depSelect = document.getElementById('departement');
+    const depResp = await fetch('dep_names.json');
+    const depData = await depResp.json();
 
-		// Lancer le chargement après que la page soit prête
-		document.addEventListener('DOMContentLoaded', chargerSelectOptions);
-	</script>
+    // Trier alphabétiquement par département
+    depData.sort((a, b) => a.departement.localeCompare(b.departement));
+
+    // Ajouter options
+    depData.forEach(dep => {
+        const opt = document.createElement('option');
+        opt.value = dep.departement;
+        opt.text = `${dep.departement} - ${dep.region}`; // text pour Tom Select
+        depSelect.appendChild(opt);
+    });
+
+    // Initialiser Tom Select pour les départements avec HTML personnalisé
+    new TomSelect('#departement', {
+        create: false,
+        render: {
+            option: function(data, escape) {
+                // séparer département et région pour mettre le département en gras
+                const [dep, region] = data.text.split(' - ');
+                return `<div><strong>${dep}</strong> - ${region}</div>`;
+            },
+            item: function(data, escape) {
+                const [dep, region] = data.text.split(' - ');
+                return `<div><strong>${dep}</strong> - ${region}</div>`;
+            }
+        },
+        sortField: { field: "text", direction: "asc" }
+    });
+}
+
+// Lancer le chargement après que la page soit prête
+document.addEventListener('DOMContentLoaded', chargerSelectOptions);
+		</script>
+		
 	<script>
 		let franceData = null;
 
