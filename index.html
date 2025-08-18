@@ -405,7 +405,7 @@
 	
 			const location = ville || departement || region;
 			const source = document.querySelector('input[name="source"]:checked').value;
-			const apiUrl = source === 'googlemaps' ? 'http://localhost:8000/scrape/googlemaps' : 'http://localhost:8000/scrape/pagesjaunes';
+			const apiUrl = source === 'googlemaps' ? 'https://bd1a32f00950.ngrok-free.app/scrape/googlemaps' : 'https://bd1a32f00950.ngrok-free.app/scrape/pagesjaunes';
 	
 			if (!query) return alert('Le Code NAF / Secteur est requis !');
 			if (!location) return alert('Veuillez sélectionner une région, un département ou une ville !');
