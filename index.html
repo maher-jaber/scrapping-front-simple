@@ -13,6 +13,18 @@
 </head>
 
 <body>
+	<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+		<div class="container-fluid">
+			<a class="navbar-brand" href="#">Scraping</a>
+			<div class="collapse navbar-collapse">
+				<ul class="navbar-nav ms-auto">
+					<li class="nav-item"><a class="nav-link active" href="#" id="menuScraping">Scraping</a></li>
+					<li class="nav-item"><a class="nav-link" href="#" id="menuHistorique">Historique</a></li>
+				</ul>
+			</div>
+		</div>
+	</nav>
+
 
 
 	<div class="container-fluid py-4">
@@ -111,7 +123,7 @@
 								<div class="col-md-2">
 									<label for="maxResults" class="form-label fw-bold">Nombre de résultats</label>
 									<input type="number" id="maxResults" name="max_results"
-										class="form-control form-control-lg" value="5" min="1" max="50" required>
+										class="form-control form-control-lg" value="5" min="1" max="1000" required>
 								</div>
 								<div class="col-md-10 d-flex justify-content-end align-items-center gap-3">
 									<button type="button" id="resetBtn" class="btn btn-outline-secondary btn-lg px-4">
@@ -127,12 +139,24 @@
 						</form>
 					</div>
 				</div>
-
+				<div id="historiqueSection" class="container-fluid py-4 d-none">
+					<div class="card shadow border-0">
+						<div class="card-header bg-secondary text-white">Historique des Scraping</div>
+						<div class="card-body">
+							<div id="historiqueList"></div>
+							<nav aria-label="Page navigation" class="mt-3">
+								<ul class="pagination justify-content-center" id="paginationHistorique"></ul>
+							</nav>
+						</div>
+					</div>
+				</div>
 				<!-- Results Section -->
 				<div id="resultsSection" class="d-none">
 					<div class="d-flex justify-content-between align-items-center mb-3">
-						<h2 class="h5 text-muted mb-0">Résultats du scraping</h2>
-						<div class="badge bg-primary rounded-pill" id="resultsCount"></div>
+						<div class="d-flex align-items-center">
+							<div class="badge bg-primary rounded-pill me-2" id="resultsCount"></div>
+							<div class="badge bg-info rounded-pill" id="elapsedTime"></div>
+						</div>
 					</div>
 					<div class="card border-0 shadow">
 						<div class="card-body p-0">
@@ -144,6 +168,12 @@
 							<div class="table-responsive">
 								<div id="resultsContainer"></div>
 							</div>
+							<!-- Pagination -->
+							<nav aria-label="Page navigation" class="mt-3">
+								<ul class="pagination justify-content-center" id="pagination">
+									<!-- Les éléments de pagination seront générés dynamiquement -->
+								</ul>
+							</nav>
 						</div>
 					</div>
 				</div>
@@ -161,6 +191,7 @@
 					</div>
 					<h5 class="mb-1">Scraping en cours</h5>
 					<p class="text-muted mb-0">Veuillez patienter pendant la collecte des données...</p>
+					<div class="mt-2" id="loadingTime"></div>
 				</div>
 			</div>
 		</div>
@@ -171,6 +202,29 @@
 	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
 
 	<style>
+		/* Style pour la pagination active */
+		.page-item.active .page-link {
+			background-color: #0d6efd;
+			border-color: #0d6efd;
+		}
+
+		/* Style pour les liens de pagination */
+		.page-link {
+			color: #0d6efd;
+			cursor: pointer;
+		}
+
+		/* Style pour la pagination responsive */
+		@media (max-width: 576px) {
+			.pagination {
+				flex-wrap: wrap;
+			}
+
+			.page-item {
+				margin-bottom: 5px;
+			}
+		}
+
 		.autocomplete-items {
 			position: absolute;
 			/* positionné par rapport à l'input parent */
@@ -259,76 +313,87 @@
 			/* pleine largeur de la colonne */
 			font-size: 1rem;
 		}
+
+		#elapsedTime {
+			font-size: 0.85rem;
+			padding: 0.35em 0.65em;
+		}
+
+		#loadingTime {
+			font-size: 0.9rem;
+		}
+
+		/* Ajouter ceci à la section style */
+		.histo-table-pagination {
+			font-size: 0.85rem;
+		}
+
+		.histo-table-pagination .btn {
+			padding: 0.25rem 0.5rem;
+			font-size: 0.85rem;
+		}
 	</style>
 
 	<link href="https://cdn.jsdelivr.net/npm/tom-select/dist/css/tom-select.css" rel="stylesheet">
 	<script src="https://cdn.jsdelivr.net/npm/tom-select/dist/js/tom-select.complete.min.js"></script>
 
 	<script>
+		let currentPage = 1;
+		let itemsPerPage = 10;
+		let allResults = [];
+
 		// --- Export CSV ---
 		document.getElementById('exportBtn').addEventListener('click', function () {
-			const results = [];
-	
-			document.querySelectorAll('#resultsContainer tbody tr').forEach(row => {
-				const rawDate = row.children[8].textContent.trim();
-				const dateObj = new Date(rawDate);
-				const formattedDate = `${String(dateObj.getDate()).padStart(2, '0')}/` +
-					`${String(dateObj.getMonth() + 1).padStart(2, '0')}/` +
-					`${dateObj.getFullYear()} ` +
-					`${String(dateObj.getHours()).padStart(2, '0')}:` +
-					`${String(dateObj.getMinutes()).padStart(2, '0')}:` +
-					`${String(dateObj.getSeconds()).padStart(2, '0')}`;
-				const rowData = {
-					Nom: row.children[0].textContent.trim(),
-					Adresse: row.children[1].textContent.trim(),
-					Téléphone: row.children[2].textContent.trim(),
-					SiteWeb: row.children[3].textContent.trim(),
-					Menu: row.children[4].textContent.trim(),
-					PlusCode: row.children[5].textContent.trim(),
-					Horaires: row.children[6].textContent.trim(),
-					Note: row.children[7].textContent.trim(),
-					ScrapeDate: formattedDate
-				};
-				results.push(rowData);
-			});
-	
-			if (results.length === 0) {
+			if (allResults.length === 0) {
 				alert("Aucun résultat à exporter !");
 				return;
 			}
-	
+
 			const csvContent = "\uFEFF" + [
-				Object.keys(results[0]).join(';'),
-				...results.map(r => Object.values(r).map(v => `"${v.replace(/"/g, '""')}"`).join(';'))
+				"Nom;Adresse;Téléphone;Site Web;Menu;Plus Code;Horaires;Note;Scrapé à",
+				...allResults.map(r => {
+					return [
+						`"${(r.Nom || 'N/A').replace(/"/g, '""')}"`,
+						`"${(r.Adresse || 'N/A').replace(/"/g, '""')}"`,
+						`"${(r.Téléphone || 'N/A').replace(/"/g, '""')}"`,
+						`"${(r['Site Web'] || 'N/A').replace(/"/g, '""')}"`,
+						`"${(r.Menu || 'N/A').replace(/"/g, '""')}"`,
+						`"${(r['Plus Code'] || 'N/A').replace(/"/g, '""')}"`,
+						`"${(r.Horaires || 'N/A').replace(/"/g, '""')}"`,
+						`"${(r.Note || 'N/A').replace(/"/g, '""')}"`,
+						`"${(r['Heure de scraping'] || 'N/A').replace(/"/g, '""')}"`
+					].join(';');
+				})
 			].join('\n');
-	
+
 			const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
 			const link = document.createElement('a');
 			link.href = URL.createObjectURL(blob);
 			link.setAttribute('download', 'resultats_scraping.csv');
 			link.click();
 		});
-	
+
+
 		// --- Autocomplete Code NAF ---
 		const input = document.getElementById('codeNafSecteur');
 		const listContainer = document.getElementById('autocomplete-list');
-	
+
 		input.addEventListener('input', async function () {
 			listContainer.innerHTML = '';
 			if (!this.value) return;
-	
+
 			const response = await fetch('naf-activity.json');
 			const data = await response.json();
-	
+
 			data.forEach(item => {
 				const displayText = `${item.id} - ${item.label}`;
 				const inputValue = input.value.trim().toLowerCase();
-	
+
 				if (displayText.toLowerCase().includes(inputValue)) {
 					const itemDiv = document.createElement("DIV");
 					const regex = new RegExp(`(${inputValue})`, 'gi');
 					itemDiv.innerHTML = displayText.replace(regex, '<span class="autocomplete-match">$1</span>');
-	
+
 					itemDiv.classList.add('autocomplete-item');
 					itemDiv.addEventListener("click", function () {
 						input.value = item.label;
@@ -338,11 +403,11 @@
 				}
 			});
 		});
-	
+
 		document.addEventListener("click", function (e) {
 			if (e.target !== input) listContainer.innerHTML = '';
 		});
-	
+
 		// --- Sélection Source ---
 		document.querySelectorAll('.source-card').forEach(card => {
 			card.addEventListener('click', function () {
@@ -353,12 +418,12 @@
 			});
 		});
 		document.querySelector('.source-card').classList.add('active');
-	
+
 		// --- Variables globales TomSelect ---
 		let regionSelect, departementSelect, regionTS, departementTS;
 		const villeInput = document.getElementById('ville');
 		const villeList = document.getElementById('ville-autocomplete');
-	
+
 		// --- Gestion exclusive Région / Département / Ville ---
 		function exclusif(changed) {
 			if (changed === 'region' && regionSelect.getValue()) {
@@ -376,7 +441,7 @@
 				villeInput.disabled = false;
 			}
 		}
-	
+
 		// --- Reset ---
 		document.getElementById('resetBtn').addEventListener('click', function () {
 			document.getElementById('scrapingForm').reset();
@@ -389,34 +454,166 @@
 			document.getElementById('resultsContainer').innerHTML = '';
 			document.getElementById('resultsSection').classList.add('d-none');
 		});
-	
+
+		// Ajoutez ces nouvelles fonctions :
+		function displayPage(page) {
+			currentPage = page;
+			const startIndex = (page - 1) * itemsPerPage;
+			const endIndex = startIndex + itemsPerPage;
+			const paginatedResults = allResults.slice(startIndex, endIndex);
+
+			let html = `<table class="table table-hover align-middle"><thead>
+        <tr class="bg-light">
+            <th>Nom</th><th>Adresse</th><th>Téléphone</th><th>Site Web</th>
+            <th>Menu</th><th>Plus Code</th><th>Horaires</th><th>Note</th><th>Scrapé à</th>
+        </tr></thead><tbody>`;
+
+			paginatedResults.forEach(r => {
+				const website = r['Site Web']
+					? `<a href="${r['Site Web'].startsWith('http') ? r['Site Web'] : 'https://' + r['Site Web']}" target="_blank">${r['Site Web']}</a>`
+					: 'N/A';
+				const phone = r.Téléphone
+					? r.Téléphone.split(',').map(num => `<a href="tel:${num.trim()}">${num.trim()}</a>`).join('<br>')
+					: 'N/A';
+				html += `<tr>
+            <td>${r.Nom || 'N/A'}</td>
+            <td>${r.Adresse || 'N/A'}</td>
+            <td>${phone}</td>
+            <td>${website}</td>
+            <td>${r.Menu || 'N/A'}</td>
+            <td>${r['Plus Code'] || 'N/A'}</td>
+            <td>${r.Horaires || 'N/A'}</td>
+            <td>${r.Note || 'N/A'}</td>
+            <td>${r['Heure de scraping'] || 'N/A'}</td>
+        </tr>`;
+			});
+
+			html += `</tbody></table>`;
+			document.getElementById('resultsContainer').innerHTML = html;
+
+			// Mettre à jour l'état actif de la pagination
+			document.querySelectorAll('#pagination .page-item').forEach(item => {
+				item.classList.remove('active');
+				if (parseInt(item.getAttribute('data-page')) === page) {
+					item.classList.add('active');
+				}
+			});
+		}
+		function setupPagination() {
+			const pagination = document.getElementById('pagination');
+			pagination.innerHTML = '';
+
+			const pageCount = Math.ceil(allResults.length / itemsPerPage);
+
+			if (pageCount <= 1) return;
+
+			// Bouton Précédent
+			const prevLi = document.createElement('li');
+			prevLi.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
+			prevLi.innerHTML = `<a class="page-link" aria-label="Previous">
+        <span aria-hidden="true">&laquo;</span>
+    </a>`;
+			prevLi.addEventListener('click', () => {
+				if (currentPage > 1) displayPage(currentPage - 1);
+			});
+			pagination.appendChild(prevLi);
+
+			// Pages
+			const maxVisiblePages = 5;
+			let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+			let endPage = Math.min(pageCount, startPage + maxVisiblePages - 1);
+
+			if (endPage - startPage + 1 < maxVisiblePages) {
+				startPage = Math.max(1, endPage - maxVisiblePages + 1);
+			}
+
+			if (startPage > 1) {
+				const firstLi = document.createElement('li');
+				firstLi.className = 'page-item';
+				firstLi.innerHTML = `<a class="page-link">1</a>`;
+				firstLi.addEventListener('click', () => displayPage(1));
+				pagination.appendChild(firstLi);
+
+				if (startPage > 2) {
+					const ellipsisLi = document.createElement('li');
+					ellipsisLi.className = 'page-item disabled';
+					ellipsisLi.innerHTML = `<a class="page-link">...</a>`;
+					pagination.appendChild(ellipsisLi);
+				}
+			}
+
+			for (let i = startPage; i <= endPage; i++) {
+				const pageLi = document.createElement('li');
+				pageLi.className = `page-item ${i === currentPage ? 'active' : ''}`;
+				pageLi.setAttribute('data-page', i);
+				pageLi.innerHTML = `<a class="page-link">${i}</a>`;
+				pageLi.addEventListener('click', () => displayPage(i));
+				pagination.appendChild(pageLi);
+			}
+
+			if (endPage < pageCount) {
+				if (endPage < pageCount - 1) {
+					const ellipsisLi = document.createElement('li');
+					ellipsisLi.className = 'page-item disabled';
+					ellipsisLi.innerHTML = `<a class="page-link">...</a>`;
+					pagination.appendChild(ellipsisLi);
+				}
+
+				const lastLi = document.createElement('li');
+				lastLi.className = 'page-item';
+				lastLi.innerHTML = `<a class="page-link">${pageCount}</a>`;
+				lastLi.addEventListener('click', () => displayPage(pageCount));
+				pagination.appendChild(lastLi);
+			}
+
+			// Bouton Suivant
+			const nextLi = document.createElement('li');
+			nextLi.className = `page-item ${currentPage === pageCount ? 'disabled' : ''}`;
+			nextLi.innerHTML = `<a class="page-link" aria-label="Next">
+        <span aria-hidden="true">&raquo;</span>
+    </a>`;
+			nextLi.addEventListener('click', () => {
+				if (currentPage < pageCount) displayPage(currentPage + 1);
+			});
+			pagination.appendChild(nextLi);
+		}
 		// --- AJAX submit ---
 		document.getElementById('scrapingForm').addEventListener('submit', function (e) {
 			e.preventDefault();
-	
+			document.getElementById('historiqueSection').classList.add('d-none');
 			const loadingModal = new bootstrap.Modal(document.getElementById('loadingModal'));
 			loadingModal.show();
-	
+
 			const query = document.getElementById('codeNafSecteur').value || '';
 			const region = regionSelect.getValue();
 			const departement = departementSelect.getValue();
 			const ville = villeInput.value;
-			const max_results = Math.min(50, Math.max(1, parseInt(document.getElementById('maxResults').value || 5)));
-	
+			const max_results = parseInt(document.getElementById('maxResults').value || 5);
+
 			const location = ville || departement || region;
 			const source = document.querySelector('input[name="source"]:checked').value;
 			const apiUrl = source === 'googlemaps' ? 'https://bd1a32f00950.ngrok-free.app/scrape/googlemaps' : 'https://bd1a32f00950.ngrok-free.app/scrape/pagesjaunes';
-	
+
 			if (!query) return alert('Le Code NAF / Secteur est requis !');
 			if (!location) return alert('Veuillez sélectionner une région, un département ou une ville !');
 			if (!max_results || max_results < 1) return alert('Veuillez entrer un nombre de résultats valide !');
-	
+
+			const startTime = new Date();
+			const timerInterval = setInterval(() => {
+				const elapsed = Math.floor((new Date() - startTime) / 1000);
+				const minutes = Math.floor(elapsed / 60);
+				const seconds = elapsed % 60;
+				document.getElementById('loadingTime').innerHTML =
+					`<div class="badge bg-secondary">Temps écoulé: ${minutes}m ${seconds}s</div>`;
+			}, 1000);
+
 			const controller = new AbortController();
 			const timeout = 120 * 60 * 1000;
 			const id = setTimeout(() => controller.abort(), timeout);
-	
+
 			const payload = { query, location, max_results };
-	
+
+
 			fetch(apiUrl, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
@@ -425,55 +622,41 @@
 			})
 				.then(resp => resp.json())
 				.then(json => {
+
+
+					clearInterval(timerInterval);
 					clearTimeout(id);
 					loadingModal.hide();
+
+					// Stocker tous les résultats
+					allResults = json.results || [];
+
+					// Afficher le temps écoulé
+					const elapsed = Math.floor((new Date() - startTime) / 1000);
+					const minutes = Math.floor(elapsed / 60);
+					const seconds = elapsed % 60;
+					document.getElementById('elapsedTime').textContent = `Durée: ${minutes}m ${seconds}s`;
+
 					const resultsSection = document.getElementById('resultsSection');
 					resultsSection.classList.remove('d-none');
-	
-					if (json.status === 'success' && json.results.length > 0) {
-						document.getElementById('resultsCount').textContent = `${json.results.length} résultat(s)`;
-						let html = `<table class="table table-hover align-middle"><thead>
-							<tr class="bg-light">
-								<th>Nom</th><th>Adresse</th><th>Téléphone</th><th>Site Web</th>
-								<th>Menu</th><th>Plus Code</th><th>Horaires</th><th>Note</th><th>Scrapé à</th>
-							</tr></thead><tbody>`;
-						json.results.forEach(r => {
-							const website = r['Site Web']
-								? `<a href="${r['Site Web'].startsWith('http') ? r['Site Web'] : 'https://' + r['Site Web']}" target="_blank">${r['Site Web']}</a>`
-								: 'N/A';
-							const phone = r.Téléphone
-								? r.Téléphone.split(',').map(num => `<a href="tel:${num.trim()}">${num.trim()}</a>`).join('<br>')
-								: 'N/A';
-							html += `<tr>
-								<td>${r.Nom || 'N/A'}</td>
-								<td>${r.Adresse || 'N/A'}</td>
-								<td>${phone}</td>
-								<td>${website}</td>
-								<td>${r.Menu || 'N/A'}</td>
-								<td>${r['Plus Code'] || 'N/A'}</td>
-								<td>${r.Horaires || 'N/A'}</td>
-								<td>${r.Note || 'N/A'}</td>
-								<td>${r['Heure de scraping'] || 'N/A'}</td>
-							</tr>`;
-						});
-						html += `</tbody></table>`;
-						document.getElementById('resultsContainer').innerHTML = html;
-					} else {
-						document.getElementById('resultsContainer').innerHTML = `<div class="text-center py-5">
-							<i class="bi bi-exclamation-triangle text-warning" style="font-size:3rem;"></i>
-							<h5 class="mt-3">Aucun résultat trouvé</h5>
-							<p class="text-muted">Essayez de modifier vos critères de recherche</p>
-						</div>`;
-					}
+
+					// Afficher le nombre total de résultats
+					document.getElementById('resultsCount').textContent = `${allResults.length} résultat(s)`;
+
+					// Initialiser la pagination
+					currentPage = 1;
+					setupPagination();
+					displayPage(currentPage);
 				})
 				.catch(err => {
+					clearInterval(timerInterval);
 					clearTimeout(id);
 					loadingModal.hide();
 					document.getElementById('resultsContainer').innerHTML = `
 						<div class="alert alert-danger">Erreur scraping : ${err.message || err}</div>`;
 				});
 		});
-	
+
 		// --- Charger options Région / Département ---
 		async function chargerSelectOptions() {
 			// Régions
@@ -488,42 +671,44 @@
 			});
 			regionTS = new TomSelect('#region', { create: false, sortField: { field: "text", direction: "asc" } });
 			regionSelect = regionTS;
-	
+
 			// Départements
 			const depResp = await fetch('dep_names.json');
 			const depData = await depResp.json();
-			depData.sort((a, b) => a.departement.localeCompare(b.departement));
+			depData.sort((a, b, c) => a.departement.localeCompare(b.departement));
 			const depSel = document.getElementById('departement');
+
 			depData.forEach(dep => {
 				const opt = document.createElement('option');
 				opt.value = dep.departement;
-				opt.text = `${dep.departement} - ${dep.region}`;
+
+				opt.text = `${dep.numero} - ${dep.departement} - ${dep.region}`;
 				depSel.appendChild(opt);
 			});
 			departementTS = new TomSelect('#departement', {
 				create: false,
 				render: {
 					option: (data) => {
-						const [dep, reg] = data.text.split(' - ');
-						return `<div><strong>${dep}</strong> - ${reg}</div>`;
+						const [num, dep, reg] = data.text.split(' - ');
+						return `<div>${num} - <strong>${dep}</strong> - ${reg}</div>`;
 					},
 					item: (data) => {
-						const [dep, reg] = data.text.split(' - ');
-						return `<div><strong>${dep}</strong> - ${reg}</div>`;
+						const [num, dep, reg] = data.text.split(' - ');
+						return `<div>${num} - <strong>${dep}</strong> - ${reg}</div>`;
 					}
 				},
 				sortField: { field: "text", direction: "asc" }
 			});
 			departementSelect = departementTS;
-	
+
 			// Gestion exclusive avec TomSelect events
 			regionTS.on("change", () => exclusif('region'));
 			departementTS.on("change", () => exclusif('departement'));
 			villeInput.addEventListener('input', () => exclusif('ville'));
 		}
-	
+
 		document.addEventListener('DOMContentLoaded', chargerSelectOptions);
-	
+
 		// --- Autocomplete Ville ---
 		let franceData = null;
 		async function loadFranceData() {
@@ -532,12 +717,12 @@
 				franceData = await resp.json();
 			}
 		}
-	
+
 		villeInput.addEventListener('input', async function () {
 			const query = this.value.trim().toLowerCase();
 			villeList.innerHTML = '';
 			if (query.length < 2) return;
-	
+
 			await loadFranceData();
 			const results = franceData
 				.filter(v => v.Nom_commune && v.Nom_commune.toLowerCase().includes(query))
@@ -554,12 +739,198 @@
 				villeList.appendChild(div);
 			});
 		});
-	
+
 		document.addEventListener('click', (e) => {
 			if (e.target !== villeInput) villeList.innerHTML = '';
 		});
+
+
+
+
+
+
+
+		let histoTablePage = {}; // Stockera la page courante pour chaque tableau
+		const histoTablePerPage = 10; // Nombre de lignes par tableau
+		let historiqueFiles = [];
+		let histoPage = 1;
+		let histoPerPage = 3; // 1 fichier = 1 tableau, mets 3/5 selon ton confort
+
+		// ---------- Utils ----------
+		function formatFRDate(createdStr, filename) {
+			// essaie "YYYY-MM-DD HH:MM:SS"
+			try {
+				const d = new Date(createdStr.replace(' ', 'T'));
+				if (!isNaN(d)) {
+					return d.toLocaleString('fr-FR', {
+						year: 'numeric', month: 'long', day: '2-digit',
+						hour: '2-digit', minute: '2-digit', second: '2-digit'
+					});
+				}
+			} catch (_) { }
+			// fallback: extrait du nom de fichier ..._YYYYMMDD_HHMMSS.json
+			const m = filename.match(/_(\d{8})_(\d{6})\.json$/);
+			if (m) {
+				const y = m[1].slice(0, 4), mo = m[1].slice(4, 6), da = m[1].slice(6, 8);
+				const hh = m[2].slice(0, 2), mm = m[2].slice(2, 4), ss = m[2].slice(4, 6);
+				const d = new Date(`${y}-${mo}-${da}T${hh}:${mm}:${ss}`);
+				if (!isNaN(d)) return d.toLocaleString('fr-FR', {
+					year: 'numeric', month: 'long', day: '2-digit',
+					hour: '2-digit', minute: '2-digit', second: '2-digit'
+				});
+			}
+			return createdStr; // dernier recours
+		}
+
+		function escapeHtml(val) {
+			return String(val ?? '').replace(/[&<>"']/g, s => (
+				{ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[s]
+			));
+		}
+
+		function buildDynamicTable(rows, tableId) {
+			if (!rows || rows.length === 0) {
+				return `<div class="text-muted">Aucune donnée</div>`;
+			}
+
+			// Initialiser la page courante pour ce tableau
+			histoTablePage[tableId] = histoTablePage[tableId] || 1;
+			const currentPage = histoTablePage[tableId];
+			const startIdx = (currentPage - 1) * histoTablePerPage;
+			const paginatedRows = rows.slice(startIdx, startIdx + histoTablePerPage);
+			const totalPages = Math.ceil(rows.length / histoTablePerPage);
+
+			// colonnes = union de toutes les clés rencontrées
+			const cols = Array.from(rows.reduce((set, obj) => {
+				Object.keys(obj).forEach(k => set.add(k));
+				return set;
+			}, new Set()));
+
+			const thead = `<thead><tr>${cols.map(c => `<th>${escapeHtml(c)}</th>`).join('')}</tr></thead>`;
+			const tbody = `<tbody>${paginatedRows.map(r => `<tr>${cols.map(c => `<td>${escapeHtml(r[c])}</td>`).join('')}</tr>`).join('')}</tbody>`;
+
+			// Pagination
+			let paginationHtml = '';
+			if (totalPages > 1) {
+				paginationHtml = `
+        <div class="d-flex justify-content-between align-items-center mt-2">
+            <small class="text-muted">Page ${currentPage} sur ${totalPages} - ${rows.length} entrées</small>
+            <div>
+                ${currentPage > 1 ? `<button class="btn btn-sm btn-outline-secondary me-1" onclick="changeHistoTablePage('${tableId}', ${currentPage - 1})">&lt; Précédent</button>` : ''}
+                ${currentPage < totalPages ? `<button class="btn btn-sm btn-outline-primary" onclick="changeHistoTablePage('${tableId}', ${currentPage + 1})">Suivant &gt;</button>` : ''}
+            </div>
+        </div>`;
+			}
+
+			return `
+    <div class="table-responsive">
+        <table class="table table-sm table-striped" id="${tableId}">
+            ${thead}${tbody}
+        </table>
+        ${paginationHtml}
+    </div>`;
+		}
+		function changeHistoTablePage(tableId, newPage) {
+			histoTablePage[tableId] = newPage;
+			// Trouver la carte parente et rafraîchir son contenu
+			const card = document.querySelector(`#${tableId}`).closest('.collapse');
+			const cardBody = card.querySelector('.card-body');
+			const datasetIndex = tableId.split('-')[1];
+			const dataset = historiqueFiles[datasetIndex];
+
+			if (dataset) {
+				fetch(`http://localhost:8000/historique/${encodeURIComponent(dataset.filename)}`)
+					.then(r => r.json())
+					.then(j => {
+						const rows = Array.isArray(j) ? j : (j.results ?? []);
+						cardBody.innerHTML = buildDynamicTable(rows, tableId);
+					});
+			}
+		}
+		function renderPagination() {
+			const pageCount = Math.ceil(historiqueFiles.length / histoPerPage);
+			const pag = document.getElementById('paginationHistorique');
+			pag.innerHTML = '';
+			if (pageCount <= 1) return;
+
+			for (let i = 1; i <= pageCount; i++) {
+				const li = document.createElement('li');
+				li.className = `page-item ${i === histoPage ? 'active' : ''}`;
+				li.innerHTML = `<a class="page-link" href="#">${i}</a>`;
+				li.addEventListener('click', (e) => { e.preventDefault(); afficherHistorique(i); });
+				pag.appendChild(li);
+			}
+		}
+
+		// ---------- Chargement + rendu ----------
+		async function chargerHistorique() {
+			const resp = await fetch('http://localhost:8000/historique/list');
+			const data = await resp.json();
+			historiqueFiles = data.files || [];
+			await afficherHistorique(1);
+		}
+
+		async function afficherHistorique(page) {
+			histoPage = page;
+			const start = (page - 1) * histoPerPage;
+			const end = start + histoPerPage;
+			const pageFiles = historiqueFiles.slice(start, end);
+
+			// Récupère le contenu de chaque fichier (results[])
+			const datasets = await Promise.all(pageFiles.map(async (f) => {
+				const r = await fetch(`http://localhost:8000/historique/${encodeURIComponent(f.filename)}`);
+				const j = await r.json();
+				const rows = Array.isArray(j) ? j : (j.results ?? []);
+				return { meta: f, rows };
+			}));
+
+			// Construit les cartes + tableaux
+			let html = '';
+			datasets.forEach((d, idx) => {
+				const niceDate = formatFRDate(d.meta.created, d.meta.filename);
+				const count = d.rows?.length || 0;
+				const collapseId = `histo-${start + idx}`;
+				const tableId = `histtbl-${start + idx}`;
+				const tableHtml = buildDynamicTable(d.rows, tableId);
+
+				html += `
+      <div class="card mb-3 border-0 shadow-sm">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <div>
+            <strong>${niceDate}</strong> — <code>${escapeHtml(d.meta.filename)}</code>
+            <span class="badge bg-primary ms-2">${count} entrées</span>
+          </div>
+          <div class="d-flex gap-2">
+            <a class="btn btn-sm btn-outline-secondary" href="http://localhost:8000/historique/${encodeURIComponent(d.meta.filename)}" target="_blank">Voir brut</a>
+            <button class="btn btn-sm btn-dark" data-bs-toggle="collapse" data-bs-target="#${collapseId}">
+              Afficher / masquer
+            </button>
+          </div>
+        </div>
+        <div id="${collapseId}" class="collapse">  <!-- Supprimé la classe 'show' -->
+          <div class="card-body">
+            ${tableHtml}
+          </div>
+        </div>
+      </div>`;
+			});
+
+			document.getElementById('historiqueList').innerHTML = html;
+			renderPagination();
+		}
+
+		// ---------- Navigation ----------
+		document.getElementById('menuHistorique').addEventListener('click', () => {
+			document.getElementById('resultsSection')?.classList.add('d-none');
+			document.getElementById('historiqueSection').classList.remove('d-none');
+			chargerHistorique();
+		});
+		document.getElementById('menuScraping').addEventListener('click', () => {
+			document.getElementById('historiqueSection').classList.add('d-none');
+			document.getElementById('resultsSection')?.classList.remove('d-none');
+		});
 	</script>
-	
+
 </body>
 
 </html>
