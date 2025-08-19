@@ -139,7 +139,25 @@
 						</form>
 					</div>
 				</div>
+			
 				<div id="historiqueSection" class="container-fluid py-4 d-none">
+					<div class="mb-3">
+						<div class="row g-2">
+							<div class="col">
+								<input type="text" id="filterQuery" class="form-control" placeholder="Filtrer Query">
+							</div>
+							<div class="col">
+								<input type="text" id="filterLocation" class="form-control"
+									placeholder="Filtrer Location">
+							</div>
+							<div class="col">
+								<input type="text" id="filterSource" class="form-control" placeholder="Filtrer Source">
+							</div>
+							<div class="col-auto">
+								<button class="btn btn-primary" onclick="appliquerFiltres()">Appliquer</button>
+							</div>
+						</div>
+					</div>
 					<div class="card shadow border-0">
 						<div class="card-header bg-secondary text-white">Historique des Scraping</div>
 						<div class="card-body">
@@ -592,7 +610,7 @@
 
 			const location = ville || departement || region;
 			const source = document.querySelector('input[name="source"]:checked').value;
-			const apiUrl = source === 'googlemaps' ? 'https://bd1a32f00950.ngrok-free.app/scrape/googlemaps' : 'https://bd1a32f00950.ngrok-free.app/scrape/pagesjaunes';
+			const apiUrl = source === 'googlemaps' ? 'http://localhost:8000/scrape/googlemaps' : 'http://localhost:8000/scrape/pagesjaunes';
 
 			if (!query) return alert('Le Code NAF / Secteur est requis !');
 			if (!location) return alert('Veuillez sélectionner une région, un département ou une ville !');
@@ -750,175 +768,122 @@
 
 
 
-		let histoTablePage = {}; // Stockera la page courante pour chaque tableau
-		const histoTablePerPage = 10; // Nombre de lignes par tableau
-		let historiqueFiles = [];
+		// --- Historique global ---
 		let histoPage = 1;
-		let histoPerPage = 3; // 1 fichier = 1 tableau, mets 3/5 selon ton confort
+		const histoPerPage = 10;
+		let totalPages = 1;
 
-		// ---------- Utils ----------
-		function formatFRDate(createdStr, filename) {
-			// essaie "YYYY-MM-DD HH:MM:SS"
-			try {
-				const d = new Date(createdStr.replace(' ', 'T'));
-				if (!isNaN(d)) {
-					return d.toLocaleString('fr-FR', {
-						year: 'numeric', month: 'long', day: '2-digit',
-						hour: '2-digit', minute: '2-digit', second: '2-digit'
-					});
-				}
-			} catch (_) { }
-			// fallback: extrait du nom de fichier ..._YYYYMMDD_HHMMSS.json
-			const m = filename.match(/_(\d{8})_(\d{6})\.json$/);
-			if (m) {
-				const y = m[1].slice(0, 4), mo = m[1].slice(4, 6), da = m[1].slice(6, 8);
-				const hh = m[2].slice(0, 2), mm = m[2].slice(2, 4), ss = m[2].slice(4, 6);
-				const d = new Date(`${y}-${mo}-${da}T${hh}:${mm}:${ss}`);
-				if (!isNaN(d)) return d.toLocaleString('fr-FR', {
-					year: 'numeric', month: 'long', day: '2-digit',
-					hour: '2-digit', minute: '2-digit', second: '2-digit'
-				});
-			}
-			return createdStr; // dernier recours
-		}
+		// --- Charger l'historique depuis le serveur ---
+	
 
-		function escapeHtml(val) {
-			return String(val ?? '').replace(/[&<>"']/g, s => (
-				{ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[s]
-			));
-		}
+		// --- Afficher l'historique avec pagination ---
+		function afficherHistorique(rows) {
+			const tableHtml = buildHistoryTable(rows);
+			const paginationHtml = buildHistoryPagination();
 
-		function buildDynamicTable(rows, tableId) {
-			if (!rows || rows.length === 0) {
-				return `<div class="text-muted">Aucune donnée</div>`;
-			}
 
-			// Initialiser la page courante pour ce tableau
-			histoTablePage[tableId] = histoTablePage[tableId] || 1;
-			const currentPage = histoTablePage[tableId];
-			const startIdx = (currentPage - 1) * histoTablePerPage;
-			const paginatedRows = rows.slice(startIdx, startIdx + histoTablePerPage);
-			const totalPages = Math.ceil(rows.length / histoTablePerPage);
+			document.getElementById('historiqueSection').innerHTML = `<div class="mb-3">
+						<div class="row g-2">
+							<div class="col">
+								<input type="text" id="filterQuery" class="form-control" placeholder="Filtrer Query">
+							</div>
+							<div class="col">
+								<input type="text" id="filterLocation" class="form-control"
+									placeholder="Filtrer Location">
+							</div>
+							<div class="col">
+								<input type="text" id="filterSource" class="form-control" placeholder="Filtrer Source">
+							</div>
+							<div class="col-auto">
+								<button class="btn btn-primary" onclick="appliquerFiltres()">Appliquer</button>
+							</div>
+							<div class="col-auto">
+								<button class="btn btn-primary" onclick="reset()">Reinitialiser</button>
+							</div>
+							
+						</div>
+					</div>`;
 
-			// colonnes = union de toutes les clés rencontrées
-			const cols = Array.from(rows.reduce((set, obj) => {
-				Object.keys(obj).forEach(k => set.add(k));
-				return set;
-			}, new Set()));
 
-			const thead = `<thead><tr>${cols.map(c => `<th>${escapeHtml(c)}</th>`).join('')}</tr></thead>`;
-			const tbody = `<tbody>${paginatedRows.map(r => `<tr>${cols.map(c => `<td>${escapeHtml(r[c])}</td>`).join('')}</tr>`).join('')}</tbody>`;
 
-			// Pagination
-			let paginationHtml = '';
-			if (totalPages > 1) {
-				paginationHtml = `
-        <div class="d-flex justify-content-between align-items-center mt-2">
-            <small class="text-muted">Page ${currentPage} sur ${totalPages} - ${rows.length} entrées</small>
-            <div>
-                ${currentPage > 1 ? `<button class="btn btn-sm btn-outline-secondary me-1" onclick="changeHistoTablePage('${tableId}', ${currentPage - 1})">&lt; Précédent</button>` : ''}
-                ${currentPage < totalPages ? `<button class="btn btn-sm btn-outline-primary" onclick="changeHistoTablePage('${tableId}', ${currentPage + 1})">Suivant &gt;</button>` : ''}
+			document.getElementById('historiqueSection').innerHTML += `
+        <div class="card shadow-sm border-0 mb-3">
+            <div class="card-header">
+                <strong>Historique</strong> — Page ${histoPage} / ${totalPages}
             </div>
-        </div>`;
-			}
-
-			return `
-    <div class="table-responsive">
-        <table class="table table-sm table-striped" id="${tableId}">
-            ${thead}${tbody}
-        </table>
-        ${paginationHtml}
-    </div>`;
-		}
-		function changeHistoTablePage(tableId, newPage) {
-			histoTablePage[tableId] = newPage;
-			// Trouver la carte parente et rafraîchir son contenu
-			const card = document.querySelector(`#${tableId}`).closest('.collapse');
-			const cardBody = card.querySelector('.card-body');
-			const datasetIndex = tableId.split('-')[1];
-			const dataset = historiqueFiles[datasetIndex];
-
-			if (dataset) {
-				fetch(`http://localhost:8000/historique/${encodeURIComponent(dataset.filename)}`)
-					.then(r => r.json())
-					.then(j => {
-						const rows = Array.isArray(j) ? j : (j.results ?? []);
-						cardBody.innerHTML = buildDynamicTable(rows, tableId);
-					});
-			}
-		}
-		function renderPagination() {
-			const pageCount = Math.ceil(historiqueFiles.length / histoPerPage);
-			const pag = document.getElementById('paginationHistorique');
-			pag.innerHTML = '';
-			if (pageCount <= 1) return;
-
-			for (let i = 1; i <= pageCount; i++) {
-				const li = document.createElement('li');
-				li.className = `page-item ${i === histoPage ? 'active' : ''}`;
-				li.innerHTML = `<a class="page-link" href="#">${i}</a>`;
-				li.addEventListener('click', (e) => { e.preventDefault(); afficherHistorique(i); });
-				pag.appendChild(li);
-			}
+            <div class="card-body">
+                ${tableHtml}
+                <nav class="mt-3">
+                    <ul class="pagination justify-content-center">${paginationHtml}</ul>
+                </nav>
+            </div>
+        </div>
+    `;
 		}
 
-		// ---------- Chargement + rendu ----------
-		async function chargerHistorique() {
-			const resp = await fetch('http://localhost:8000/historique/list');
-			const data = await resp.json();
-			historiqueFiles = data.files || [];
-			await afficherHistorique(1);
+		// --- Générer le tableau historique ---
+		function buildHistoryTable(rows) {
+			if (!rows || rows.length === 0) return `<div class="text-muted">Aucune donnée</div>`;
+
+			const thead = `<thead class="table-light"><tr>
+        <th>ID</th><th>Date Scraping</th><th>Query</th><th>Location</th><th>Source</th>
+        <th>Nom</th><th>Adresse</th><th>Téléphone</th><th>Site Web</th><th>Plus Code</th>
+        <th>Note</th><th>Horaires</th>
+    </tr></thead>`;
+
+			const tbody = `<tbody>${rows.map(r =>
+				`<tr>
+            <td>${r.history_id}</td>
+            <td>${formatFRDate(r.scraped_at)}</td>
+            <td>${escapeHtml(r.query)}</td>
+            <td>${escapeHtml(r.location)}</td>
+            <td>${escapeHtml(r.source)}</td>
+            <td>${escapeHtml(r.name)}</td>
+            <td>${escapeHtml(r.address)}</td>
+            <td>${escapeHtml(r.phone)}</td>
+            <td>${escapeHtml(r.website)}</td>
+            <td>${escapeHtml(r.plus_code)}</td>
+            <td>${escapeHtml(r.note)}</td>
+            <td>${escapeHtml(r.horaires)}</td>
+        </tr>`).join('')}</tbody>`;
+
+			return `<div class="table-responsive"><table class="table table-sm table-striped table-bordered mb-0">${thead}${tbody}</table></div>`;
 		}
 
-		async function afficherHistorique(page) {
-			histoPage = page;
-			const start = (page - 1) * histoPerPage;
-			const end = start + histoPerPage;
-			const pageFiles = historiqueFiles.slice(start, end);
-
-			// Récupère le contenu de chaque fichier (results[])
-			const datasets = await Promise.all(pageFiles.map(async (f) => {
-				const r = await fetch(`http://localhost:8000/historique/${encodeURIComponent(f.filename)}`);
-				const j = await r.json();
-				const rows = Array.isArray(j) ? j : (j.results ?? []);
-				return { meta: f, rows };
-			}));
-
-			// Construit les cartes + tableaux
+		// --- Pagination ---
+		function buildHistoryPagination() {
+			if (totalPages <= 1) return '';
 			let html = '';
-			datasets.forEach((d, idx) => {
-				const niceDate = formatFRDate(d.meta.created, d.meta.filename);
-				const count = d.rows?.length || 0;
-				const collapseId = `histo-${start + idx}`;
-				const tableId = `histtbl-${start + idx}`;
-				const tableHtml = buildDynamicTable(d.rows, tableId);
 
-				html += `
-      <div class="card mb-3 border-0 shadow-sm">
-        <div class="card-header d-flex justify-content-between align-items-center">
-          <div>
-            <strong>${niceDate}</strong> — <code>${escapeHtml(d.meta.filename)}</code>
-            <span class="badge bg-primary ms-2">${count} entrées</span>
-          </div>
-          <div class="d-flex gap-2">
-            <a class="btn btn-sm btn-outline-secondary" href="http://localhost:8000/historique/${encodeURIComponent(d.meta.filename)}" target="_blank">Voir brut</a>
-            <button class="btn btn-sm btn-dark" data-bs-toggle="collapse" data-bs-target="#${collapseId}">
-              Afficher / masquer
-            </button>
-          </div>
-        </div>
-        <div id="${collapseId}" class="collapse">  <!-- Supprimé la classe 'show' -->
-          <div class="card-body">
-            ${tableHtml}
-          </div>
-        </div>
-      </div>`;
-			});
-
-			document.getElementById('historiqueList').innerHTML = html;
-			renderPagination();
+			for (let i = 1; i <= totalPages; i++) {
+				html += `<li class="page-item ${i === histoPage ? 'active' : ''}">
+                    <a class="page-link" href="#" onclick="chargerHistorique(${i}); return false;">${i}</a>
+                 </li>`;
+			}
+			return html;
 		}
 
+		// --- Utils ---
+		function escapeHtml(val) {
+			return String(val ?? '').replace(/[&<>"']/g, s => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[s]));
+		}
+
+		function formatFRDate(str) {
+			if (!str) return '';
+			const d = new Date(str.replace(' ', 'T'));
+			if (isNaN(d)) return str;
+			return d.toLocaleString('fr-FR', {
+				year: 'numeric', month: 'long', day: '2-digit',
+				hour: '2-digit', minute: '2-digit', second: '2-digit'
+			});
+		}
+
+		// --- Initialisation ---
+		document.addEventListener('DOMContentLoaded', () => {
+			if (document.getElementById('historiqueSection')) {
+				chargerHistorique();
+			}
+		});
 		// ---------- Navigation ----------
 		document.getElementById('menuHistorique').addEventListener('click', () => {
 			document.getElementById('resultsSection')?.classList.add('d-none');
@@ -929,6 +894,46 @@
 			document.getElementById('historiqueSection').classList.add('d-none');
 			document.getElementById('resultsSection')?.classList.remove('d-none');
 		});
+		let histoFilters = {
+			query: '',
+			location: '',
+			source: ''
+		};
+
+		function appliquerFiltres() {
+			histoFilters.query = document.getElementById('filterQuery').value.trim();
+			histoFilters.location = document.getElementById('filterLocation').value.trim();
+			histoFilters.source = document.getElementById('filterSource').value.trim();
+			chargerHistorique(1); // revenir à la page 1
+		}
+		function reset() {
+			histoFilters.query = "";
+			histoFilters.location = "";
+			histoFilters.source = "";
+			chargerHistorique(1); // revenir à la page 1
+		}
+
+		async function chargerHistorique(page = 1) {
+			try {
+				const params = new URLSearchParams({
+					page, per_page: histoPerPage,
+					query: histoFilters.query,
+					location: histoFilters.location,
+					source: histoFilters.source
+				});
+
+				const resp = await fetch(`http://localhost:8000/historique?${params.toString()}`);
+				const data = await resp.json();
+
+				histoPage = data.page;
+				totalPages = Math.ceil(data.total / data.per_page);
+				afficherHistorique(data.historique);
+			} catch (err) {
+				console.error("Erreur chargement historique :", err);
+				document.getElementById('historiqueSection').innerHTML =
+					`<div class="alert alert-danger">Impossible de charger l'historique.</div>`;
+			}
+		}
 	</script>
 
 </body>
