@@ -1,6 +1,48 @@
 let currentPage = 1;
 let itemsPerPage = 10;
 let allResults = [];
+let jwtToken = null;
+
+document.addEventListener('DOMContentLoaded', () => {
+    const loginModal = new bootstrap.Modal(document.getElementById('loginModal'));
+    loginModal.show();
+
+    const loginForm = document.getElementById('loginForm');
+    loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const username = document.getElementById('username').value.trim();
+        const password = document.getElementById('password').value.trim();
+
+        // Créer un FormData
+        const formData = new FormData();
+        formData.append('username', username);
+        formData.append('password', password);
+
+        try {
+            const resp = await fetch('http://localhost:8000/token', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!resp.ok) throw new Error("Login échoué");
+
+            const data = await resp.json();
+            if (data.access_token) {
+                jwtToken = data.access_token;  // stocker le JWT
+                bootstrap.Modal.getInstance(document.getElementById('loginModal')).hide();
+                document.getElementById('globalform').classList.remove('d-none');
+            } else {
+                document.getElementById('loginError').classList.remove('d-none');
+            }
+
+        } catch (err) {
+            console.error(err);
+            document.getElementById('loginError').classList.remove('d-none');
+        }
+    });
+
+});
 
 // --- Export CSV ---
 document.getElementById('exportBtn').addEventListener('click', function () {
@@ -284,7 +326,10 @@ document.getElementById('scrapingForm').addEventListener('submit', function (e) 
 
     fetch(apiUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${jwtToken}`
+        },
         body: JSON.stringify(payload),
         signal: controller.signal
     })
@@ -433,8 +478,13 @@ function afficherHistorique(rows) {
 
     document.getElementById('historiqueTable').innerHTML = `
     <div class="card shadow-sm border-0 mb-3">
-        <div class="card-header">
-            <strong>Historique</strong> — Page ${histoPage} / ${totalPages}
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <div>
+                <strong>Historique</strong> — Page ${histoPage} / ${totalPages}
+            </div>
+            <div class="text-muted small">
+                Total : <span class="badge bg-primary">${histoTotal}</span> enregistrements
+            </div>
         </div>
         <div class="card-body">
             ${tableHtml}
@@ -444,6 +494,7 @@ function afficherHistorique(rows) {
         </div>
     </div>`;
 }
+
 // --- Générer le tableau historique ---
 function buildHistoryTable(rows) {
     if (!rows || rows.length === 0) return `<div class="text-muted">Aucune donnée</div>`;
@@ -476,15 +527,65 @@ function buildHistoryTable(rows) {
 // --- Pagination ---
 function buildHistoryPagination() {
     if (totalPages <= 1) return '';
+
     let html = '';
 
-    for (let i = 1; i <= totalPages; i++) {
+    // Bouton précédent
+    if (histoPage > 1) {
+        html += `<li class="page-item">
+                    <a class="page-link" href="#" onclick="chargerHistorique(${histoPage - 1}); return false;">&laquo;</a>
+                 </li>`;
+    } else {
+        html += `<li class="page-item disabled"><span class="page-link">&laquo;</span></li>`;
+    }
+
+    const maxVisiblePages = 5;
+    let startPage = Math.max(1, histoPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+    if (endPage - startPage + 1 < maxVisiblePages) {
+        startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+
+    // Page 1 toujours affichée
+    if (startPage > 1) {
+        html += `<li class="page-item">
+                    <a class="page-link" href="#" onclick="chargerHistorique(1); return false;">1</a>
+                 </li>`;
+        if (startPage > 2) {
+            html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+        }
+    }
+
+    // Pages visibles autour de la courante
+    for (let i = startPage; i <= endPage; i++) {
         html += `<li class="page-item ${i === histoPage ? 'active' : ''}">
                     <a class="page-link" href="#" onclick="chargerHistorique(${i}); return false;">${i}</a>
                  </li>`;
     }
+
+    // Dernière page toujours affichée
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+            html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+        }
+        html += `<li class="page-item">
+                    <a class="page-link" href="#" onclick="chargerHistorique(${totalPages}); return false;">${totalPages}</a>
+                 </li>`;
+    }
+
+    // Bouton suivant
+    if (histoPage < totalPages) {
+        html += `<li class="page-item">
+                    <a class="page-link" href="#" onclick="chargerHistorique(${histoPage + 1}); return false;">&raquo;</a>
+                 </li>`;
+    } else {
+        html += `<li class="page-item disabled"><span class="page-link">&raquo;</span></li>`;
+    }
+
     return html;
 }
+
 
 // --- Utils ---
 function escapeHtml(val) {
@@ -540,6 +641,7 @@ let histoFilters = {
 let nafData = null;
 let departementData = null;
 let regionData = null;
+let histoTotal = 0;
 
 async function chargerHistorique(page = 1) {
     try {
@@ -552,11 +654,17 @@ async function chargerHistorique(page = 1) {
             date_to: histoFilters.dateTo || ''
         });
 
-        const resp = await fetch(`http://localhost:8000/historique?${params.toString()}`);
+        const resp = await fetch(`http://localhost:8000/historique?${params.toString()}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${jwtToken}`
+            }
+        });
         const data = await resp.json();
 
         histoPage = data.page;
         totalPages = Math.ceil(data.total / data.per_page);
+        histoTotal = data.total;
         afficherHistorique(data.historique);
     } catch (err) {
         console.error("Erreur chargement historique :", err);
@@ -595,64 +703,72 @@ async function loadHistoriqueDataMixed() {
 // --- Initialiser les filtres autocomplete ---
 function initFiltresHistorique() {
     const html = `
-   <div class="row g-3">
-                <!-- Code NAF / Query -->
-                <div class="col-md-6 position-relative">
-                    <label class="form-label fw-bold">Code NAF / Query</label>
-                    <input type="text" id="filterQuery" class="form-control" placeholder="Saisir un code NAF ou terme de recherche">
-                    <div id="filterQueryList" class="autocomplete-items position-absolute w-100 d-none"></div>
+   <div class="mb-4">
+    <div class="row g-3 align-items-end">
+        <!-- Query -->
+        <div class="col-md-4 position-relative">
+            <label for="filterQuery" class="form-label fw-semibold">Code NAF / Query</label>
+            <input type="text" id="filterQuery" class="form-control" placeholder="Filtrer Query">
+            <div id="filterQueryList" class="autocomplete-items position-absolute w-100"></div>
+        </div>
+
+        <!-- Location -->
+        <div class="col-md-4 position-relative">
+            <label for="filterLocation" class="form-label fw-semibold">Location (Ville / Département / Région)</label>
+            <input type="text" id="filterLocation" class="form-control" placeholder="Filtrer Location">
+            <div id="filterLocationList" class="autocomplete-items position-absolute w-100"></div>
+        </div>
+
+        <!-- Date -->
+        <div class="col-md-6">
+            <label class="form-label fw-semibold">Date Scraping</label>
+            <div class="row g-2">
+                <div class="col">
+                    <label for="filterDateFrom" class="form-label small mb-1">De</label>
+                    <input type="date" id="filterDateFrom" class="form-control">
                 </div>
-                
-                <!-- Location -->
-                <div class="col-md-6 position-relative">
-                    <label class="form-label fw-bold">Localisation (Ville / Département / Région)</label>
-                    <input type="text" id="filterLocation" class="form-control" placeholder="Saisir une localisation">
-                    <div id="filterLocationList" class="autocomplete-items position-absolute w-100 d-none"></div>
-                </div>
-                
-                <!-- Date Scraping -->
-                <div class="col-md-6">
-                    <label class="form-label fw-bold">Date Scraping</label>
-                    <div class="row g-2">
-                        <div class="col-md-6">
-                            <label class="date-label">De</label>
-                            <input type="date" id="filterDateFrom" class="form-control">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="date-label">À</label>
-                            <input type="date" id="filterDateTo" class="form-control">
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Source -->
-                <div class="col-md-6">
-                    <label class="form-label fw-bold">Source</label>
-                    <div style="margin-top:30px" class="d-flex flex-wrap gap-3">
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="filterSource" id="filterSourceAll" value="" checked>
-                            <label class="form-check-label" for="filterSourceAll">Toutes les sources</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="filterSource" id="filterSourceGoogle" value="googlemaps">
-                            <label class="form-check-label" for="filterSourceGoogle">Google Maps</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="filterSource" id="filterSourcePages" value="pagesjaunes">
-                            <label class="form-check-label" for="filterSourcePages">PagesJaunes.fr</label>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Buttons -->
-                <div class="col-12 mt-3">
-                    <div class="d-flex gap-2 justify-content-end">
-                        <button class="btn btn-primary px-4" onclick="appliquerFiltres()">Appliquer les filtres</button>
-                        <button class="btn btn-outline-secondary px-4" onclick="resetFiltres()">Réinitialiser</button>
-						<button class="btn btn-success" id="exportCsvBtn">Exporter CSV</button>
-                    </div>
+                <div class="col">
+                    <label for="filterDateTo" class="form-label small mb-1">À</label>
+                    <input type="date" id="filterDateTo" class="form-control">
                 </div>
             </div>
+        </div>
+
+        <!-- Source -->
+        <div class="col-md-4">
+            <label class="form-label fw-semibold">Source</label>
+            <div class="d-flex flex-wrap gap-3">
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="filterSource" id="filterSourceAll" value="" checked>
+                    <label class="form-check-label" for="filterSourceAll">Tous</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="filterSource" id="filterSourceGoogle" value="googlemaps">
+                    <label class="form-check-label" for="filterSourceGoogle">Google Maps</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="filterSource" id="filterSourcePages" value="pagesjaunes">
+                    <label class="form-check-label" for="filterSourcePages">PagesJaunes.fr</label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="col-auto ms-auto d-flex gap-2">
+            <button type="button" class="btn btn-primary px-3" onclick="appliquerFiltres()">
+                <i class="bi bi-funnel me-1"></i> Appliquer
+            </button>
+            <button type="button" class="btn btn-outline-secondary px-3" onclick="resetFiltres()">
+                <i class="bi bi-arrow-counterclockwise me-1"></i> Réinitialiser
+            </button>
+            <button type="button" class="btn btn-success px-3" id="exportCsvBtn">
+                <i class="bi bi-download me-1"></i> Exporter CSV
+            </button>
+        </div>
+    </div>
+</div>
+
+               
 `;
 
     document.getElementById('historiqueFiltres').innerHTML = html;
@@ -684,40 +800,60 @@ function initFiltresHistorique() {
     });
     document.addEventListener('click', e => { if (e.target !== filterQuery) filterQueryList.innerHTML = ''; });
     document.getElementById('exportCsvBtn').addEventListener('click', async () => {
-        // Récupérer les filtres actuels
         const query = document.getElementById('filterQuery').value.trim();
         const location = document.getElementById('filterLocation').value.trim();
         const source = document.querySelector('input[name="filterSource"]:checked')?.value || '';
         const dateFrom = document.getElementById('filterDateFrom').value;
         const dateTo = document.getElementById('filterDateTo').value;
 
-        // Construire les paramètres URL
-        const params = new URLSearchParams({
-            page: 1,
-            per_page: 1000, // ou un max raisonnable
-            query,
-            location,
-            source,
-            date_from: dateFrom,
-            date_to: dateTo
-        });
+        const perPage = 500; // tu peux ajuster
+        let page = 1;
+        let allRows = [];
 
         try {
-            const resp = await fetch(`http://localhost:8000/historique?${params.toString()}`);
-            const data = await resp.json();
-            const rows = data.historique || [];
+            while (true) {
+                const params = new URLSearchParams({
+                    page,
+                    per_page: perPage,
+                    query,
+                    location,
+                    source,
+                    date_from: dateFrom,
+                    date_to: dateTo
+                });
 
-            if (rows.length === 0) {
+                const resp = await fetch(`http://localhost:8000/historique?${params.toString()}`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${jwtToken}`
+                    }
+                });
+                const data = await resp.json();
+                const rows = data.historique || [];
+
+                if (rows.length === 0) {
+                    break; // plus de résultats -> stop
+                }
+
+                allRows = allRows.concat(rows);
+
+                if (rows.length < perPage) {
+                    break; // dernière page atteinte
+                }
+
+                page++;
+            }
+
+            if (allRows.length === 0) {
                 alert("Aucune donnée à exporter pour ces filtres !");
                 return;
             }
 
-            // Construire CSV
             const safeString = v => (v !== null && v !== undefined ? String(v).replace(/"/g, '""') : '');
 
             const csvContent = "\uFEFF" + [
                 "ID;Date Scraping;Query;Location;Source;Nom;Adresse;Téléphone;Site Web;Plus Code;Note;Horaires",
-                ...rows.map(r => [
+                ...allRows.map(r => [
                     r.history_id,
                     r.scraped_at,
                     `"${safeString(r.query)}"`,
@@ -733,7 +869,6 @@ function initFiltresHistorique() {
                 ].join(';'))
             ].join('\n');
 
-            // Téléchargement
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
@@ -745,6 +880,7 @@ function initFiltresHistorique() {
             alert("Erreur lors de l'export CSV");
         }
     });
+
     // --- Location autocomplete ---
     const filterLocation = document.getElementById('filterLocation');
     const filterLocationList = document.getElementById('filterLocationList');
