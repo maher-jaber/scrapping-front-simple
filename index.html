@@ -139,7 +139,7 @@
 						</form>
 					</div>
 				</div>
-			
+
 				<div id="historiqueSection" class="container-fluid py-4 d-none">
 					<div class="mb-3">
 						<div class="row g-2">
@@ -368,18 +368,19 @@
 			}
 
 			const csvContent = "\uFEFF" + [
-				"Nom;Adresse;Téléphone;Site Web;Menu;Plus Code;Horaires;Note;Scrapé à",
+				"Nom;Adresse;Téléphone;Site Web;Menu;Plus Code;Horaires;Note;Scrapé à;Status",
 				...allResults.map(r => {
 					return [
-						`"${(r.Nom || 'N/A').replace(/"/g, '""')}"`,
-						`"${(r.Adresse || 'N/A').replace(/"/g, '""')}"`,
-						`"${(r.Téléphone || 'N/A').replace(/"/g, '""')}"`,
-						`"${(r['Site Web'] || 'N/A').replace(/"/g, '""')}"`,
-						`"${(r.Menu || 'N/A').replace(/"/g, '""')}"`,
-						`"${(r['Plus Code'] || 'N/A').replace(/"/g, '""')}"`,
-						`"${(r.Horaires || 'N/A').replace(/"/g, '""')}"`,
-						`"${(r.Note || 'N/A').replace(/"/g, '""')}"`,
-						`"${(r['Heure de scraping'] || 'N/A').replace(/"/g, '""')}"`
+						`"${(r.name || 'N/A').replace(/"/g, '""')}"`,
+						`"${(r.address || 'N/A').replace(/"/g, '""')}"`,
+						`"${(r.phone || 'N/A').replace(/"/g, '""')}"`,
+						`"${(r.website || 'N/A').replace(/"/g, '""')}"`,
+						`"${(r.menu || 'N/A').replace(/"/g, '""')}"`,
+						`"${(r.plus_code || 'N/A').replace(/"/g, '""')}"`,
+						`"${(r.horaires || 'N/A').replace(/"/g, '""')}"`,
+						`"${(r.note || 'N/A').replace(/"/g, '""')}"`,
+						`"${(formatFRDate(r.scraped_at) || 'N/A').replace(/"/g, '""')}"`,
+						`"${r.already_scrapped ? 'Deja scrappé' : 'Nouveau'}"`
 					].join(';');
 				})
 			].join('\n');
@@ -390,6 +391,7 @@
 			link.setAttribute('download', 'resultats_scraping.csv');
 			link.click();
 		});
+
 
 
 		// --- Autocomplete Code NAF ---
@@ -483,26 +485,31 @@
 			let html = `<table class="table table-hover align-middle"><thead>
         <tr class="bg-light">
             <th>Nom</th><th>Adresse</th><th>Téléphone</th><th>Site Web</th>
-            <th>Menu</th><th>Plus Code</th><th>Horaires</th><th>Note</th><th>Scrapé à</th>
+            <th>Plus Code</th><th>Horaires</th><th>Note</th><th>Status</th><th>Scrapé à</th>
         </tr></thead><tbody>`;
 
 			paginatedResults.forEach(r => {
-				const website = r['Site Web']
-					? `<a href="${r['Site Web'].startsWith('http') ? r['Site Web'] : 'https://' + r['Site Web']}" target="_blank">${r['Site Web']}</a>`
+				const website = r.website
+					? `<a href="${r.website.startsWith('http') ? r.website : 'https://' + r.website}" target="_blank">${r.website}</a>`
 					: 'N/A';
-				const phone = r.Téléphone
-					? r.Téléphone.split(',').map(num => `<a href="tel:${num.trim()}">${num.trim()}</a>`).join('<br>')
+				const phone = r.phone
+					? r.phone.split(',').map(num => `<a href="tel:${num.trim()}">${num.trim()}</a>`).join('<br>')
 					: 'N/A';
+
 				html += `<tr>
-            <td>${r.Nom || 'N/A'}</td>
-            <td>${r.Adresse || 'N/A'}</td>
+            <td>${r.name || 'N/A'}</td>
+            <td>${r.address || 'N/A'}</td>
             <td>${phone}</td>
             <td>${website}</td>
-            <td>${r.Menu || 'N/A'}</td>
-            <td>${r['Plus Code'] || 'N/A'}</td>
-            <td>${r.Horaires || 'N/A'}</td>
-            <td>${r.Note || 'N/A'}</td>
-            <td>${r['Heure de scraping'] || 'N/A'}</td>
+            <td>${r.plus_code || 'N/A'}</td>
+            <td>${r.horaires || 'N/A'}</td>
+            <td>${r.note || 'N/A'}</td>
+            <td>
+                ${r.already_scrapped
+						? '<span class="badge bg-primary">Deja scrappé</span>'
+						: '<span class="badge bg-success">Nouveau</span>'}
+            </td>
+            <td>${formatFRDate(r.scraped_at) || 'N/A'}</td>
         </tr>`;
 			});
 
@@ -517,6 +524,7 @@
 				}
 			});
 		}
+
 		function setupPagination() {
 			const pagination = document.getElementById('pagination');
 			pagination.innerHTML = '';
@@ -774,7 +782,7 @@
 		let totalPages = 1;
 
 		// --- Charger l'historique depuis le serveur ---
-	
+
 
 		// --- Afficher l'historique avec pagination ---
 		function afficherHistorique(rows) {
