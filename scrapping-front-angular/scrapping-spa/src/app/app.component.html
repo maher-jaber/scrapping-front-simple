@@ -1,0 +1,26 @@
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+  <div class="container-fluid">
+    <a class="navbar-brand" routerLink="/">Scrapping Application</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div id="nav" class="collapse navbar-collapse">
+      <ul class="navbar-nav me-auto" *ngIf="auth.isLoggedIn()">
+        <li class="nav-item"><a class="nav-link" routerLink="/scraping" routerLinkActive="active">Scraping</a></li>
+        <li class="nav-item"><a class="nav-link" routerLink="/historique" routerLinkActive="active">Historique</a></li>
+      </ul>
+      <div class="d-flex">
+        <!-- Si pas connecté -->
+        <button *ngIf="!auth.isLoggedIn()" class="btn btn-outline-light me-2" routerLink="/login">Se connecter</button>
+        <!-- Si connecté -->
+        <button *ngIf="auth.isLoggedIn()" class="btn btn-outline-light me-2" (click)="deconnect()">Se déconnecter</button>
+        <button *ngIf="auth.isLoggedIn()" class="btn btn-outline-warning" routerLink="/register">Créer un compte</button>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<div class="container-fluid py-4">
+  <router-outlet></router-outlet>
+</div>
+

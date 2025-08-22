@@ -1,0 +1,226 @@
+<div class="card shadow mb-4">
+    <div class="card-header"><h5 class="mb-0">Scraping entreprises France</h5></div>
+    <div class="card-body">
+      <form (ngSubmit)="submit()" [formGroup]="form">
+        <div class="row g-3">
+          <!-- Code NAF / Secteur avec autocomplete -->
+          <div class="col-md-3">
+            <label class="form-label fw-bold">Code NAF / Secteur</label>
+            <div class="input-group">
+              <span class="input-group-text">
+                <i class="bi bi-building"></i>
+              </span>
+              <input 
+                class="form-control" 
+                id="codeNafSecteur" 
+                formControlName="query" 
+                placeholder="Ex: Restaurants"
+                [matAutocomplete]="nafAuto"
+              />
+              <mat-autocomplete #nafAuto="matAutocomplete" [displayWith]="displayNafFn.bind(this)">
+                <mat-option *ngFor="let option of filteredNafOptions | async" [value]="option">
+                  {{ option.id }} - {{ option.label }}
+                </mat-option>
+              </mat-autocomplete>
+            </div>
+          </div>
+  
+          <!-- Région avec autocomplete -->
+          <div class="col-md-3">
+            <label class="form-label fw-bold">Région</label>
+            <div class="input-group">
+              <span class="input-group-text">
+                <i class="bi bi-map"></i>
+              </span>
+              <input 
+                class="form-control" 
+                formControlName="region" 
+                placeholder="Tapez une région"
+                [matAutocomplete]="regionAuto"
+                [disabled]="regionDisabled"
+                (input)="onRegionChange()"
+              />
+              <mat-autocomplete #regionAuto="matAutocomplete" (optionSelected)="onRegionChange()">
+                <mat-option *ngFor="let option of filteredRegionOptions | async" [value]="option">
+                  {{ option }}
+                </mat-option>
+              </mat-autocomplete>
+            </div>
+          </div>
+  
+          <!-- Département avec autocomplete -->
+          <div class="col-md-3">
+            <label class="form-label fw-bold">Département</label>
+            <div class="input-group">
+              <span class="input-group-text">
+                <i class="bi bi-geo-alt"></i>
+              </span>
+              <input 
+                class="form-control" 
+                formControlName="departement" 
+                placeholder="Tapez un département"
+                [matAutocomplete]="departementAuto"
+                [disabled]="depDisabled"
+                
+                (input)="onDepChange()"
+              />
+              <mat-autocomplete #departementAuto="matAutocomplete" (optionSelected)="onDepChange()" [displayWith]="displayDepartementFn.bind(this)">
+                <mat-option *ngFor="let option of filteredDepartementOptions | async" [value]="option">
+                  {{ option.numero }} - {{ option.departement }} - {{ option.region }}
+                </mat-option>
+              </mat-autocomplete>
+            </div>
+          </div>
+  
+          <!-- Ville avec autocomplete -->
+          <div class="col-md-3">
+            <label class="form-label fw-bold">Ville</label>
+            <div class="input-group">
+              <span class="input-group-text">
+                <i class="bi bi-pin-map"></i>
+              </span>
+              <input 
+                class="form-control" 
+                formControlName="ville" 
+                placeholder="Tapez le nom de la ville"
+                [matAutocomplete]="villeAuto"
+                [disabled]="villeDisabled"
+                (onKey)="onVilleInput()"
+              />
+              <mat-autocomplete #villeAuto="matAutocomplete" (optionSelected)="onVilleInput()">
+                <mat-option *ngFor="let option of filteredVilleOptions | async" [value]="option">
+                  {{ option }}
+                </mat-option>
+              </mat-autocomplete>
+            </div>
+          </div>
+        </div>
+  
+        <div class="mt-3">
+          <label class="form-label fw-bold">Source de données</label>
+          <div class="d-flex flex-wrap gap-3">
+            <div class="form-check card card-hover p-0 source-card" [class.active]="source==='googlemaps'">
+              <input class="form-check-input d-none" type="radio" [checked]="source==='googlemaps'" (change)="setSource('googlemaps')" name="source" id="srcG">
+              <label class="form-check-label card-body d-flex align-items-center gap-2" for="srcG">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/aa/Google_Maps_icon_%282020%29.svg/48px-Google_Maps_icon_%282020%29.svg.png" width="32" height="32" class="rounded">
+                <span>Google Maps</span>
+              </label>
+            </div>
+            <div class="form-check card card-hover p-0 source-card" [class.active]="source==='pagesjaunes'">
+              <input class="form-check-input d-none" type="radio" [checked]="source==='pagesjaunes'" (change)="setSource('pagesjaunes')" name="source" id="srcP">
+              <label class="form-check-label card-body d-flex align-items-center gap-2" for="srcP">
+                <img src="https://www.pagesjaunes.fr/assets/images/logo_pagesjaunes-b41e5acdca.svg" width="32" height="32" class="rounded">
+                <span>PagesJaunes.fr</span>
+              </label>
+            </div>
+          </div>
+        </div>
+  
+        <div class="row g-3 align-items-end mt-2">
+          <div class="col-md-2">
+            <label class="form-label fw-bold">Nombre de résultats</label>
+            <input type="number" min="1" max="1000" class="form-control" formControlName="max_results">
+          </div>
+          <div class="col-md-10 text-end">
+            <button type="button" class="btn btn-outline-secondary me-2" (click)="reset()">
+              <i class="bi bi-arrow-counterclockwise me-2"></i>Réinitialiser
+            </button>
+            <button class="btn btn-primary" [disabled]="loading">
+              <span *ngIf="loading" class="spinner-border spinner-border-sm me-2"></span>
+              <i class="bi bi-search me-2"></i>Rechercher
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+  
+  <div *ngIf="results.length" class="card shadow">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <div>
+          <span class="badge bg-primary me-2">{{ results.length }} résultat(s)</span>
+          <span class="badge bg-info">Durée: {{ elapsed }}</span>
+        </div>
+        <button class="btn btn-success" (click)="exportCSV()">
+          <i class="bi bi-file-earmark-excel me-2"></i>Exporter en CSV
+        </button>
+      </div>
+  
+      <div class="table-responsive">
+        <table class="table table-hover align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>Nom</th><th>Adresse</th><th>Téléphone</th><th>Site Web</th>
+              <th>Plus Code</th><th>Horaires</th><th>Note</th><th>Status</th><th>Scrapé à</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let r of paginated">
+              <td>{{ r.name || 'N/A' }}</td>
+              <td>{{ r.address || 'N/A' }}</td>
+              <td>
+                <ng-container *ngIf="r.phone; else na">
+                  <div *ngFor="let num of (r.phone || '').split(',')">
+                    <a [href]="'tel:'+num.trim()">{{ num.trim() }}</a>
+                  </div>
+                </ng-container>
+                <ng-template #na>N/A</ng-template>
+              </td>
+              <td>
+                <ng-container *ngIf="r.website; else n2">
+                  <a [href]="r.website.startsWith('http') ? r.website : 'https://' + r.website" target="_blank">
+                    {{ r.website }}
+                  </a>
+                </ng-container>
+                <ng-template #n2>N/A</ng-template>
+              </td>
+              <td>{{ r.plus_code || 'N/A' }}</td>
+              <td>{{ r.horaires || 'N/A' }}</td>
+              <td>{{ r.note || 'N/A' }}</td>
+              <td>
+                <span class="badge" [ngClass]="r.already_scrapped ? 'bg-primary' : 'bg-success'">
+                  {{ r.already_scrapped ? 'Deja scrappé' : 'Nouveau' }}
+                </span>
+              </td>
+              <td>{{ formatFRDate(r.scraped_at) || 'N/A' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+  
+      <!-- pagination -->
+      <nav class="mt-3">
+        <ul class="pagination justify-content-center">
+          <li class="page-item" [class.disabled]="currentPage===1">
+            <a class="page-link" (click)="goToPrevPage()">&laquo;</a>
+          </li>
+          <li class="page-item" *ngFor="let p of pages()" [class.active]="p===currentPage">
+            <a class="page-link" (click)="currentPage=p; updatePage()">{{ p }}</a>
+          </li>
+          <li class="page-item" [class.disabled]="currentPage===pages().length">
+            <a class="page-link" (click)="goToNextPage()">&raquo;</a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+  </div>
+
+<!-- Modal Scraping -->
+<div class="modal fade" id="scrapingModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content text-center p-3">
+      <div class="modal-body">
+        <div class="mb-3">
+          <div class="spinner-border text-primary" role="status" style="width:3rem; height:3rem">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+        </div>
+        <h5 class="mb-2">Scraping en cours...</h5>
+        <p>Veuillez patienter, les données sont en cours de récupération.</p>
+        <p><strong>Temps écoulé : {{ elapsed }}</strong></p>
+      </div>
+    </div>
+  </div>
+</div>
+
