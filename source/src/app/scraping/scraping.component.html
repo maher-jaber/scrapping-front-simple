@@ -142,7 +142,7 @@
           <span class="badge bg-primary me-2">{{ results.length }} résultat(s)</span>
           <span class="badge bg-info">Durée: {{ elapsed }}</span>
         </div>
-        <button class="btn btn-success" (click)="exportCSV()">
+        <button class="btn btn-success" (click)="openExportModal()">
           <i class="bi bi-file-earmark-excel me-2"></i>Exporter en CSV
         </button>
       </div>
@@ -223,4 +223,37 @@
     </div>
   </div>
 </div>
+
+
+<div class="modal fade" id="exportModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Exporter les résultats</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+      </div>
+      <div class="modal-body">
+        <form>
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="exportFilter" value="all" [(ngModel)]="exportChoice" checked>
+            <label class="form-check-label">Tous</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="exportFilter" value="scrapped" [(ngModel)]="exportChoice">
+            <label class="form-check-label">Déjà scrappé</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="exportFilter" value="new" [(ngModel)]="exportChoice">
+            <label class="form-check-label">Nouveau</label>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+        <button class="btn btn-primary" (click)="confirmExport()">Exporter</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 

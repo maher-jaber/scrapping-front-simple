@@ -3,7 +3,7 @@ import { FormBuilder, Validators } from '@angular/forms';
 import { ApiService, ScrapeResult } from '../core/api.service';
 import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule } from '@angular/forms';
+
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -11,11 +11,13 @@ import { Observable } from 'rxjs';
 import { map, startWith } from 'rxjs/operators';
 import { NafOption } from '../models/NafOption';
 import { DepartementOption } from '../models/DepartementOption';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 declare var bootstrap: any;
 
 @Component({
     selector: 'app-scraping',
     imports: [
+        FormsModule,
         CommonModule,
         ReactiveFormsModule,
         MatAutocompleteModule,
@@ -64,6 +66,10 @@ export class ScrapingComponent implements OnInit, OnDestroy {
     currentItem = 0;
     totalItems = 0;
 
+
+    exportChoice: 'all' | 'scrapped' | 'new' = 'all';
+    private exportModal: any;
+
     constructor(private fb: FormBuilder, private api: ApiService, private http: HttpClient) {
         this.form = this.fb.group({
             query: this.fb.control<string | NafOption>(''),
@@ -99,6 +105,10 @@ export class ScrapingComponent implements OnInit, OnDestroy {
                 backdrop: 'static',
                 keyboard: false
             });
+        }
+        const modalEl2 = document.getElementById('exportModal');
+        if (modalEl2) {
+          this.exportModal = new bootstrap.Modal(modalEl2, { backdrop: 'static', keyboard: false });
         }
     }
 
@@ -138,7 +148,50 @@ export class ScrapingComponent implements OnInit, OnDestroy {
         );
     }
 
-
+    openExportModal() {
+        if (!this.results.length) {
+          alert('Aucun résultat');
+          return;
+        }
+        this.exportModal.show();
+      }
+      confirmExport() {
+        let filtered = this.results;
+      
+        if (this.exportChoice === 'scrapped') {
+          filtered = this.results.filter(r => r.already_scrapped);
+        } else if (this.exportChoice === 'new') {
+          filtered = this.results.filter(r => !r.already_scrapped);
+        }
+      
+        if (!filtered.length) {
+          alert("Aucun résultat pour ce filtre");
+          this.exportModal.hide();
+          return;
+        }
+      
+        const head = 'Nom;Adresse;Téléphone;Site Web;Plus Code;Horaires;Note;Scrapé à;Status';
+        const rows = filtered.map(r => ([
+          r.name || 'N/A',
+          r.address || 'N/A',
+          r.phone || 'N/A',
+          r.website || 'N/A',
+          r.plus_code || 'N/A',
+          r.horaires || 'N/A',
+          r.note || 'N/A',
+          this.formatFRDate(r.scraped_at) || 'N/A',
+          r.already_scrapped ? 'Deja scrappé' : 'Nouveau'
+        ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(';')));
+      
+        const csv = '\uFEFF' + [head, ...rows].join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'resultats_scraping.csv';
+        a.click();
+      
+        this.exportModal.hide();
+      }
 
     private _filterNaf(value: string): any[] {
         if (typeof value !== 'string') return [];
