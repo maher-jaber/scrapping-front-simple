@@ -11,7 +11,7 @@ import { Observable } from 'rxjs';
 import { map, startWith } from 'rxjs/operators';
 import { NafOption } from '../models/NafOption';
 import { DepartementOption } from '../models/DepartementOption';
-declare var bootstrap: any; 
+declare var bootstrap: any;
 
 @Component({
     selector: 'app-scraping',
@@ -57,10 +57,13 @@ export class ScrapingComponent implements OnInit, OnDestroy {
     depDisabled = false;
     villeDisabled = false;
     form: any;
-    
+
     private scrapingModal: any;
 
-    
+    progress = 0;
+    currentItem = 0;
+    totalItems = 0;
+
     constructor(private fb: FormBuilder, private api: ApiService, private http: HttpClient) {
         this.form = this.fb.group({
             query: this.fb.control<string | NafOption>(''),
@@ -232,9 +235,9 @@ export class ScrapingComponent implements OnInit, OnDestroy {
 
     submit() {
         if (this.form.invalid) return;
-    
+
         const f = this.form.value;
-    
+
         // Vérifications existantes
         const query = typeof f.query === 'string' ? f.query : f.query?.label;
         const location =
@@ -245,16 +248,16 @@ export class ScrapingComponent implements OnInit, OnDestroy {
             alert('Sélectionne une région, un département ou une ville');
             return;
         }
-    
+
         this.loading = true;
         this.startTime = Date.now();
         this.elapsed = '0m 0s';
-    
+
         // ⬅ Ouvrir modal
         this.scrapingModal.show();
-    
+
         const timer = setInterval(() => this.updateElapsed(), 1000);
-    
+
         this.api.scrape(this.source, {
             query: f.query.label!,
             location: location!,
@@ -267,7 +270,7 @@ export class ScrapingComponent implements OnInit, OnDestroy {
                 this.loading = false;
                 clearInterval(timer);
                 this.updateElapsed(true);
-    
+
                 // ⬅ Fermer modal
                 this.scrapingModal.hide();
             },
@@ -279,7 +282,7 @@ export class ScrapingComponent implements OnInit, OnDestroy {
             }
         });
     }
-    
+
     updateElapsed(final = false) {
         if (!this.startTime) return;
         const secs = Math.floor((Date.now() - this.startTime) / 1000);
