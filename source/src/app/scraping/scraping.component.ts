@@ -239,42 +239,38 @@ export class ScrapingComponent implements OnInit, OnDestroy {
     setSource(val: 'googlemaps' | 'pagesjaunes') { this.source = val; }
 
     onRegionChange() {
-        console.log('started');
         const v = this.form.value.region;
         if (v && typeof v === 'string' && v.trim() !== '') {
-            this.form.get('departement')?.disable();
-            this.form.get('ville')?.disable();
-
+          this.form.get('departement')?.disable();
+          this.form.get('ville')?.disable();
         } else {
-            this.form.get('departement')?.enable();
-            this.form.get('ville')?.enable();
-
+          this.form.get('departement')?.enable();
+          this.form.get('ville')?.enable();
         }
-        console.log(this.depDisabled + "*****" + this.villeDisabled)
-    }
-
-    onDepChange() {
+      }
+      
+      onDepChange() {
         const v = this.form.value.departement;
-        if (v && typeof v === 'object') {
-            this.form.get('region')?.disable();
-            this.form.get('ville')?.disable();
+        const label = typeof v === 'object' ? v.departement : v; // gère objet + string
+        if (label && label.trim() !== '') {
+          this.form.get('region')?.disable();
+          this.form.get('ville')?.disable();
         } else {
-            this.form.get('region')?.enable();
-            this.form.get('ville')?.enable();
+          this.form.get('region')?.enable();
+          this.form.get('ville')?.enable();
         }
-    }
-
-    onVilleInput() {
+      }
+      
+      onVilleChange() {
         const v = this.form.value.ville;
         if (v && typeof v === 'string' && v.trim() !== '') {
-            this.form.get('region')?.disable();
-            this.form.get('departement')?.disable();
-
+          this.form.get('region')?.disable();
+          this.form.get('departement')?.disable();
         } else {
-            this.form.get('region')?.enable();
-            this.form.get('departement')?.enable();
+          this.form.get('region')?.enable();
+          this.form.get('departement')?.enable();
         }
-    }
+      }
 
 
     reset() {

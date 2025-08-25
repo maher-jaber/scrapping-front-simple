@@ -1,6 +1,6 @@
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+<nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm">
   <div class="container-fluid">
-    <a class="navbar-brand" routerLink="/">Scrapping Application</a>
+    <a class="navbar-brand fw-bold text-primary" routerLink="/">Scrapping Application</a>
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav">
       <span class="navbar-toggler-icon"></span>
     </button>
@@ -11,10 +11,10 @@
       </ul>
       <div class="d-flex">
         <!-- Si pas connecté -->
-        <button *ngIf="!auth.isLoggedIn()" class="btn btn-outline-light me-2" routerLink="/login">Se connecter</button>
+        <button *ngIf="!auth.isLoggedIn()" class="btn btn-outline-primary me-2" routerLink="/login">Se connecter</button>
         <!-- Si connecté -->
-        <button *ngIf="auth.isLoggedIn()" class="btn btn-outline-light me-2" (click)="deconnect()">Se déconnecter</button>
-        <button *ngIf="auth.isLoggedIn()" class="btn btn-outline-warning" routerLink="/register">Créer un compte</button>
+        <button *ngIf="auth.isLoggedIn()" class="btn btn-outline-danger me-2" (click)="deconnect()">Se déconnecter</button>
+        <button *ngIf="auth.isLoggedIn()" class="btn btn-warning" routerLink="/register">Créer un compte</button>
       </div>
     </div>
   </div>
@@ -23,4 +23,6 @@
 <div class="container-fluid py-4">
   <router-outlet></router-outlet>
 </div>
+
+
 

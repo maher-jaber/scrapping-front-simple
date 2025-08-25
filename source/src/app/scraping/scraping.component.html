@@ -38,7 +38,8 @@
                 placeholder="Tapez une région"
                 [matAutocomplete]="regionAuto"
                 [disabled]="regionDisabled"
-                (input)="onRegionChange()"
+                (input)="onRegionChange()" 
+                (optionSelected)="onRegionChange()"
               />
               <mat-autocomplete #regionAuto="matAutocomplete" (optionSelected)="onRegionChange()">
                 <mat-option *ngFor="let option of filteredRegionOptions | async" [value]="option">
@@ -61,8 +62,8 @@
                 placeholder="Tapez un département"
                 [matAutocomplete]="departementAuto"
                 [disabled]="depDisabled"
-                
-                (input)="onDepChange()"
+                (input)="onDepChange()" 
+                (optionSelected)="onDepChange()"
               />
               <mat-autocomplete #departementAuto="matAutocomplete" (optionSelected)="onDepChange()" [displayWith]="displayDepartementFn.bind(this)">
                 <mat-option *ngFor="let option of filteredDepartementOptions | async" [value]="option">
@@ -85,9 +86,10 @@
                 placeholder="Tapez le nom de la ville"
                 [matAutocomplete]="villeAuto"
                 [disabled]="villeDisabled"
-                (onKey)="onVilleInput()"
+                (input)="onVilleChange()"
+                (optionSelected)="onVilleChange()"
               />
-              <mat-autocomplete #villeAuto="matAutocomplete" (optionSelected)="onVilleInput()">
+              <mat-autocomplete #villeAuto="matAutocomplete" (optionSelected)="onVilleChange()">
                 <mat-option *ngFor="let option of filteredVilleOptions | async" [value]="option">
                   {{ option }}
                 </mat-option>
