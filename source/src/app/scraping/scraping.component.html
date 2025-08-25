@@ -38,10 +38,10 @@
                 placeholder="Tapez une région"
                 [matAutocomplete]="regionAuto"
                 [disabled]="regionDisabled"
-                (input)="onRegionChange()" 
-                (optionSelected)="onRegionChange()"
+                (input)="onRegionChange($event)" 
+                (optionSelected)="onRegionChange($event)"
               />
-              <mat-autocomplete #regionAuto="matAutocomplete" (optionSelected)="onRegionChange()">
+              <mat-autocomplete #regionAuto="matAutocomplete" (optionSelected)="onRegionChange($event)">
                 <mat-option *ngFor="let option of filteredRegionOptions | async" [value]="option">
                   {{ option }}
                 </mat-option>
@@ -62,10 +62,10 @@
                 placeholder="Tapez un département"
                 [matAutocomplete]="departementAuto"
                 [disabled]="depDisabled"
-                (input)="onDepChange()" 
-                (optionSelected)="onDepChange()"
+                (input)="onDepChange($event)" 
+                (optionSelected)="onDepChange($event)"
               />
-              <mat-autocomplete #departementAuto="matAutocomplete" (optionSelected)="onDepChange()" [displayWith]="displayDepartementFn.bind(this)">
+              <mat-autocomplete #departementAuto="matAutocomplete" (optionSelected)="onDepChange($event)" [displayWith]="displayDepartementFn.bind(this)">
                 <mat-option *ngFor="let option of filteredDepartementOptions | async" [value]="option">
                   {{ option.numero }} - {{ option.departement }} - {{ option.region }}
                 </mat-option>
@@ -86,10 +86,10 @@
                 placeholder="Tapez le nom de la ville"
                 [matAutocomplete]="villeAuto"
                 [disabled]="villeDisabled"
-                (input)="onVilleChange()"
-                (optionSelected)="onVilleChange()"
+                (input)="onVilleChange($event)"
+                (optionSelected)="onVilleChange($event)"
               />
-              <mat-autocomplete #villeAuto="matAutocomplete" (optionSelected)="onVilleChange()">
+              <mat-autocomplete #villeAuto="matAutocomplete" (optionSelected)="onVilleChange($event)">
                 <mat-option *ngFor="let option of filteredVilleOptions | async" [value]="option">
                   {{ option }}
                 </mat-option>

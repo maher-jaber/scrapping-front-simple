@@ -238,7 +238,7 @@ export class ScrapingComponent implements OnInit, OnDestroy {
 
     setSource(val: 'googlemaps' | 'pagesjaunes') { this.source = val; }
 
-    onRegionChange() {
+    onRegionChange($event:any) {
         const v = this.form.value.region;
         if (v && typeof v === 'string' && v.trim() !== '') {
           this.form.get('departement')?.disable();
@@ -249,7 +249,7 @@ export class ScrapingComponent implements OnInit, OnDestroy {
         }
       }
       
-      onDepChange() {
+      onDepChange($event:any) {
         const v = this.form.value.departement;
         const label = typeof v === 'object' ? v.departement : v; // gère objet + string
         if (label && label.trim() !== '') {
@@ -261,7 +261,7 @@ export class ScrapingComponent implements OnInit, OnDestroy {
         }
       }
       
-      onVilleChange() {
+      onVilleChange($event:any) {
         const v = this.form.value.ville;
         if (v && typeof v === 'string' && v.trim() !== '') {
           this.form.get('region')?.disable();
