@@ -30,8 +30,9 @@ declare var bootstrap: any;
 })
 
 export class ScrapingComponent implements OnInit, OnDestroy {
-
-
+    
+   
+    inProgress: any[] = [];
     // Observables pour l'autocomplete
     filteredNafOptions!: Observable<any[]>;
     filteredRegionOptions!: Observable<string[]>;
@@ -67,7 +68,8 @@ export class ScrapingComponent implements OnInit, OnDestroy {
     currentItem = 0;
     totalItems = 0;
 
-
+    progressPercent = 0;       // valeur de la progress bar
+    currentCompany: any = null; // dernière entreprise scrappée
     exportChoice: 'all' | 'scrapped' | 'new' = 'all';
     private exportModal: any;
 
@@ -288,94 +290,75 @@ export class ScrapingComponent implements OnInit, OnDestroy {
         this.form.get('departement')?.enable();
         this.form.get('ville')?.enable();
     }
-
-    submit() {
+    get progressPercentValue(): number {
+        if (!this.currentCompany) return 0;
+        return Math.min(100, Math.round((this.currentCompany.current_index / this.currentCompany.total) * 100));
+    }
+    
+    get lastCompany(): any {
+        return this.currentCompany;
+    }
+      submit() {
         if (this.form.invalid) return;
-
+    
         const f = this.form.value;
-
-        // Vérifications existantes
         const query = typeof f.query === 'string' ? f.query : f.query?.label;
         const location =
             f.ville ||
             (typeof f.departement === 'string' ? f.departement : f.departement?.departement) ||
             f.region;
-        if (!location) {
-            Swal.fire({
-                title: 'Erreur !',
-                text: 'Sélectionne une région, un département ou une ville',
-                icon: 'error',
-                confirmButtonText: 'OK'
-            });
-
-            return;
-        }
-        if (!query) {
-            Swal.fire({
-                title: 'Erreur !',
-                text: 'Sélectionne un code Naf',
-                icon: 'error',
-                confirmButtonText: 'OK'
-            });
-
-            return;
-        }
-        if (!(0 < f.max_results && f.max_results <= 1000)) {
-            // ici f.max_results n'est pas entre 1 et 1000 inclus
-
-            Swal.fire({
-                title: 'Erreur !',
-                text: 'Choisisez un nombre de resultats entre 1 et 1000',
-                icon: 'error',
-                confirmButtonText: 'OK'
-            });
-
-            return;
-
-        }
+        if (!location || !query || !(0 < f.max_results && f.max_results <= 1000)) return;
+    
         this.loading = true;
         this.startTime = Date.now();
         this.elapsed = '0m 0s';
-
-        // ⬅ Ouvrir modal
+        this.currentCompany = null; // nouvelle variable pour la dernière entreprise
+        this.progressPercent = 0;   // progress bar
+    
+        // Ouvre modal
         this.scrapingModal.show();
-
+    
+        // ⬅ Polling toutes les 1,5s pour récupérer la dernière entreprise et le progress
+        const statusInterval = setInterval(async () => {
+            try {
+                const res: any = await this.api.getStatus(this.source).toPromise();
+                if (res.in_progress) {
+                    this.currentCompany = res.in_progress; // objet unique
+                    this.progressPercent = Math.min(100, Math.round((res.in_progress.current_index / f.max_results) * 100));
+                }
+            } catch (e) {
+                console.error('Erreur récupération statut:', e);
+            }
+        }, 2500);
+    
         const timer = setInterval(() => this.updateElapsed(), 1000);
-
+    
         this.api.scrape(this.source, {
             query: f.query.label!,
             location: location!,
             max_results: f.max_results!
         }).subscribe({
             next: (res) => {
-                if (res.status == "error"){
-                    Swal.fire({
-                        title: 'Erreur !',
-                        text: 'Pas de données',
-                        icon: 'error',
-                        confirmButtonText: 'OK'
-                    });
-        
-                    
-                }
                 this.results = res.results || [];
                 this.currentPage = 1;
                 this.updatePage();
                 this.loading = false;
                 clearInterval(timer);
+                clearInterval(statusInterval);
                 this.updateElapsed(true);
-
-                // ⬅ Fermer modal
                 this.scrapingModal.hide();
             },
             error: (err) => {
                 this.loading = false;
                 clearInterval(timer);
-                this.scrapingModal.hide(); // ⬅ Fermer modal aussi en cas d'erreur
+                clearInterval(statusInterval);
+                this.scrapingModal.hide();
                 alert(`Erreur scraping: ${err?.error?.message || err.message || err}`);
             }
         });
     }
+    
+    
 
     updateElapsed(final = false) {
         if (!this.startTime) return;

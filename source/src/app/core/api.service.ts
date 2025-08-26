@@ -2,6 +2,8 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { environment } from '../../environments/environment';
 import { Observable } from 'rxjs';
+import { HttpHeaders } from '@angular/common/http';
+
 
 export interface ScrapeRequest { query: string; location: string; max_results: number; }
 export interface ScrapeResult {
@@ -24,7 +26,19 @@ export class ApiService {
     const url = source === 'googlemaps' ? '/scrape/googlemaps' : '/scrape/pagesjaunes';
     return this.http.post<{ status: string; results: ScrapeResult[] }>(`${this.api}${url}`, payload);
   }
-
+  getStatus(source: 'googlemaps'|'pagesjaunes'): Observable<any> {
+    const url = source === 'googlemaps' ? '/scrape/googlemaps/status' : '/scrape/pagesjaunes/status';
+    return this.http.get<any>(`${this.api}${url}`, {
+      headers: this.getAuthHeaders()
+    });
+  }
+  private getAuthHeaders(): HttpHeaders {
+    const token = localStorage.getItem('access_token') || '';
+    return new HttpHeaders({
+      Authorization: `Bearer ${token}`
+    });
+  }
+  
   historique(params: {
     page?: number; per_page?: number; query?: string; location?: string; source?: string; date_from?: string; date_to?: string;
   }) {
