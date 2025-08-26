@@ -12,6 +12,7 @@ import { map, startWith } from 'rxjs/operators';
 import { NafOption } from '../models/NafOption';
 import { DepartementOption } from '../models/DepartementOption';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
+import Swal from 'sweetalert2';
 declare var bootstrap: any;
 
 @Component({
@@ -108,7 +109,7 @@ export class ScrapingComponent implements OnInit, OnDestroy {
         }
         const modalEl2 = document.getElementById('exportModal');
         if (modalEl2) {
-          this.exportModal = new bootstrap.Modal(modalEl2, { backdrop: 'static', keyboard: false });
+            this.exportModal = new bootstrap.Modal(modalEl2, { backdrop: 'static', keyboard: false });
         }
     }
 
@@ -150,48 +151,54 @@ export class ScrapingComponent implements OnInit, OnDestroy {
 
     openExportModal() {
         if (!this.results.length) {
-          alert('Aucun résultat');
-          return;
+            alert('Aucun résultat');
+            return;
         }
         this.exportModal.show();
-      }
-      confirmExport() {
+    }
+    confirmExport() {
         let filtered = this.results;
-      
+
         if (this.exportChoice === 'scrapped') {
-          filtered = this.results.filter(r => r.already_scrapped);
+            filtered = this.results.filter(r => r.already_scrapped);
         } else if (this.exportChoice === 'new') {
-          filtered = this.results.filter(r => !r.already_scrapped);
+            filtered = this.results.filter(r => !r.already_scrapped);
         }
-      
+
         if (!filtered.length) {
-          alert("Aucun résultat pour ce filtre");
-          this.exportModal.hide();
-          return;
+
+            Swal.fire({
+                title: 'Erreur !',
+                text: '"Aucun résultat pour ce filtre"',
+                icon: 'error',
+                confirmButtonText: 'OK'
+            });
+            this.exportModal.hide();
+            return;
         }
-      
+
         const head = 'Nom;Adresse;Téléphone;Site Web;Plus Code;Horaires;Note;Scrapé à;Status';
         const rows = filtered.map(r => ([
-          r.name || 'N/A',
-          r.address || 'N/A',
-          r.phone || 'N/A',
-          r.website || 'N/A',
-          r.plus_code || 'N/A',
-          r.horaires || 'N/A',
-          r.note || 'N/A',
-          this.formatFRDate(r.scraped_at) || 'N/A',
-          r.already_scrapped ? 'Deja scrappé' : 'Nouveau'
+            r.name || 'N/A',
+            r.address || 'N/A',
+            r.phone || 'N/A',
+            r.website || 'N/A',
+            r.plus_code || 'N/A',
+            r.horaires || 'N/A',
+            r.note || 'N/A',
+            this.formatFRDate(r.scraped_at) || 'N/A',
+            r.already_scrapped ? 'Deja scrappé' : 'Nouveau'
         ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(';')));
-      
+
         const csv = '\uFEFF' + [head, ...rows].join('\n');
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
         a.download = 'resultats_scraping.csv';
         a.click();
-      
+
         this.exportModal.hide();
-      }
+    }
 
     private _filterNaf(value: string): any[] {
         if (typeof value !== 'string') return [];
@@ -238,39 +245,39 @@ export class ScrapingComponent implements OnInit, OnDestroy {
 
     setSource(val: 'googlemaps' | 'pagesjaunes') { this.source = val; }
 
-    onRegionChange($event:any) {
+    onRegionChange($event: any) {
         const v = this.form.value.region;
         if (v && typeof v === 'string' && v.trim() !== '') {
-          this.form.get('departement')?.disable();
-          this.form.get('ville')?.disable();
+            this.form.get('departement')?.disable();
+            this.form.get('ville')?.disable();
         } else {
-          this.form.get('departement')?.enable();
-          this.form.get('ville')?.enable();
+            this.form.get('departement')?.enable();
+            this.form.get('ville')?.enable();
         }
-      }
-      
-      onDepChange($event:any) {
+    }
+
+    onDepChange($event: any) {
         const v = this.form.value.departement;
         const label = typeof v === 'object' ? v.departement : v; // gère objet + string
         if (label && label.trim() !== '') {
-          this.form.get('region')?.disable();
-          this.form.get('ville')?.disable();
+            this.form.get('region')?.disable();
+            this.form.get('ville')?.disable();
         } else {
-          this.form.get('region')?.enable();
-          this.form.get('ville')?.enable();
+            this.form.get('region')?.enable();
+            this.form.get('ville')?.enable();
         }
-      }
-      
-      onVilleChange($event:any) {
+    }
+
+    onVilleChange($event: any) {
         const v = this.form.value.ville;
         if (v && typeof v === 'string' && v.trim() !== '') {
-          this.form.get('region')?.disable();
-          this.form.get('departement')?.disable();
+            this.form.get('region')?.disable();
+            this.form.get('departement')?.disable();
         } else {
-          this.form.get('region')?.enable();
-          this.form.get('departement')?.enable();
+            this.form.get('region')?.enable();
+            this.form.get('departement')?.enable();
         }
-      }
+    }
 
 
     reset() {
@@ -294,10 +301,38 @@ export class ScrapingComponent implements OnInit, OnDestroy {
             (typeof f.departement === 'string' ? f.departement : f.departement?.departement) ||
             f.region;
         if (!location) {
-            alert('Sélectionne une région, un département ou une ville');
+            Swal.fire({
+                title: 'Erreur !',
+                text: 'Sélectionne une région, un département ou une ville',
+                icon: 'error',
+                confirmButtonText: 'OK'
+            });
+
             return;
         }
+        if (!query) {
+            Swal.fire({
+                title: 'Erreur !',
+                text: 'Sélectionne un code Naf',
+                icon: 'error',
+                confirmButtonText: 'OK'
+            });
 
+            return;
+        }
+        if (!(0 < f.max_results && f.max_results <= 1000)) {
+            // ici f.max_results n'est pas entre 1 et 1000 inclus
+
+            Swal.fire({
+                title: 'Erreur !',
+                text: 'Choisisez un nombre de resultats entre 1 et 1000',
+                icon: 'error',
+                confirmButtonText: 'OK'
+            });
+
+            return;
+
+        }
         this.loading = true;
         this.startTime = Date.now();
         this.elapsed = '0m 0s';
@@ -313,6 +348,16 @@ export class ScrapingComponent implements OnInit, OnDestroy {
             max_results: f.max_results!
         }).subscribe({
             next: (res) => {
+                if (res.status == "error"){
+                    Swal.fire({
+                        title: 'Erreur !',
+                        text: 'Pas de données',
+                        icon: 'error',
+                        confirmButtonText: 'OK'
+                    });
+        
+                    
+                }
                 this.results = res.results || [];
                 this.currentPage = 1;
                 this.updatePage();

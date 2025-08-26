@@ -16,8 +16,8 @@ export class AuthService {
     const body = new URLSearchParams();
     body.set('username', username);
     body.set('password', password);
-
-    return this.http.post<any>(`${this.api}/token`, body.toString(), {
+    const deviceInfo = navigator.userAgent; // navigateur + OS
+    return this.http.post<any>(`${this.api}/token?device_info=${encodeURIComponent(deviceInfo)}`, body.toString(), {
       headers: new HttpHeaders({ 'Content-Type': 'application/x-www-form-urlencoded' })
     }).pipe(tap(tokens => this.storeTokens(tokens)));
   }
@@ -45,11 +45,11 @@ export class AuthService {
   }
 
   logout() {
-    const token = this.getAccessToken();
+    const refreshToken = this.getRefreshToken();
     localStorage.removeItem(this.accessKey);
     localStorage.removeItem(this.refreshKey);
     return this.http.post(`${this.api}/logout`, {}, {
-      headers: token ? new HttpHeaders({ Authorization: `Bearer ${token}` }) : undefined
+      headers: refreshToken ? new HttpHeaders({ Authorization: `Bearer ${refreshToken}` }) : undefined
     });
   }
 

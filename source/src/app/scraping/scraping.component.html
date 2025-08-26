@@ -122,7 +122,15 @@
           <div class="col-md-2">
             <label class="form-label fw-bold">Nombre de résultats</label>
             <input type="number" min="1" max="1000" class="form-control" formControlName="max_results">
+            
+            <!-- Messages d'erreur -->
+            <div class="text-danger mt-1" *ngIf="form.get('max_results')?.touched && form.get('max_results')?.invalid">
+              <div *ngIf="form.get('max_results')?.errors?.['required']">Le nombre de résultats est requis.</div>
+              <div *ngIf="form.get('max_results')?.errors?.['min']">Le minimum est 1.</div>
+              <div *ngIf="form.get('max_results')?.errors?.['max']">Le maximum est 1000.</div>
+            </div>
           </div>
+          
           <div class="col-md-10 text-end">
             <button type="button" class="btn btn-outline-secondary me-2" (click)="reset()">
               <i class="bi bi-arrow-counterclockwise me-2"></i>Réinitialiser
