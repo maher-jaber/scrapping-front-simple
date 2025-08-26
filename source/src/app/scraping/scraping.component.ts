@@ -196,7 +196,7 @@ export class ScrapingComponent implements OnInit, OnDestroy {
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = 'resultats_scraping.csv';
+        a.download = this.buildCsvFilename();
         a.click();
 
         this.exportModal.hide();
@@ -396,10 +396,32 @@ export class ScrapingComponent implements OnInit, OnDestroy {
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = 'resultats_scraping.csv';
+        a.download = this.buildCsvFilename();
         a.click();
     }
-
+    private buildCsvFilename(): string {
+        const f = this.form.value;
+      
+        // code NAF
+        const codeNaf = typeof f.query === 'object' ? f.query.id : (f.query || 'NAF');
+      
+        // location (ville / dep / région)
+        const location =
+          f.ville ||
+          (typeof f.departement === 'string' ? f.departement : f.departement?.departement) ||
+          f.region || 'Location';
+      
+        // timestamp
+        const now = new Date();
+        const timestamp = `${now.getFullYear()}-${(now.getMonth()+1).toString().padStart(2,'0')}-${now.getDate().toString().padStart(2,'0')}_${now.getHours()}h${now.getMinutes()}m`;
+      
+        // nettoyer caractères spéciaux
+        const safeCode = String(codeNaf).replace(/[^a-zA-Z0-9_-]/g, '');
+        const safeLoc  = String(location).replace(/[^a-zA-Z0-9_-]/g, '');
+      
+        return `${safeCode}_${safeLoc}_${timestamp}.csv`;
+      }
+      
     formatFRDate(str?: string) {
         if (!str) return '';
         const d = new Date(str.replace(' ', 'T'));
