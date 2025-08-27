@@ -50,4 +50,13 @@ export class ApiService {
   logout() {
     return this.http.post(`${this.api}/logout`, {});
   }
+  stopScraping(source: string): Observable<any> {
+    const sourceFormated = source === 'googlemaps' ? 'gmaps' : 'pagesjaunes';
+    return this.http.post(`${this.api}/scrape/stop?source=${sourceFormated}`, {});
+}
+
+getStatusSC(source: string): Observable<any> {
+  
+    return this.http.get(`${this.api}/scrape/${source}/status`);
+}
 }

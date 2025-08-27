@@ -31,7 +31,9 @@ declare var bootstrap: any;
 
 export class ScrapingComponent implements OnInit, OnDestroy {
 
-
+    private statusInterval: any;
+    private scrapingInProgress = false; // Nouvelle variable pour suivre l'état
+    private scrapingSubscription: any; // Pour gérer l'abonnement
     inProgress: any[] = [];
     // Observables pour l'autocomplete
     filteredNafOptions!: Observable<any[]>;
@@ -72,6 +74,14 @@ export class ScrapingComponent implements OnInit, OnDestroy {
     currentCompany: any = null; // dernière entreprise scrappée
     exportChoice: 'all' | 'scrapped' | 'new' = 'all';
     private exportModal: any;
+    messages: string[] = [
+        "Scraping en cours...",
+        "Analyse des données...",
+        "Presque terminé..."
+      ];
+      currentMessage: string = "";
+      msgIndex = 0;
+      charIndex = 0;
 
     constructor(private fb: FormBuilder, private api: ApiService, private http: HttpClient) {
         this.form = this.fb.group({
@@ -113,6 +123,7 @@ export class ScrapingComponent implements OnInit, OnDestroy {
         if (modalEl2) {
             this.exportModal = new bootstrap.Modal(modalEl2, { backdrop: 'static', keyboard: false });
         }
+        this.typeWriter();
     }
 
     private setupAutocomplete() {
@@ -300,7 +311,11 @@ export class ScrapingComponent implements OnInit, OnDestroy {
     }
     submit() {
         if (this.form.invalid) return;
-
+        if (this.scrapingInProgress) {
+            // Si déjà en cours, on ne fait rien ou on propose d'arrêter
+            return;
+        }
+    
         const f = this.form.value;
         const query = typeof f.query === 'string' ? f.query : f.query?.label;
         const location =
@@ -316,59 +331,121 @@ export class ScrapingComponent implements OnInit, OnDestroy {
             });
             return;
         }
-
-
-
+    
+        this.scrapingInProgress = true; // Marquer le scraping comme démarré
         this.loading = true;
         this.startTime = Date.now();
         this.elapsed = '0m 0s';
-        this.currentCompany = null; // nouvelle variable pour la dernière entreprise
-        this.progressPercent = 0;   // progress bar
-
+        this.currentCompany = null;
+        this.progressPercent = 0;
+    
         // Ouvre modal
         this.scrapingModal.show();
-
-        // ⬅ Polling toutes les 1,5s pour récupérer la dernière entreprise et le progress
-        const statusInterval = setInterval(async () => {
+    
+        // ⬅ Polling pour récupérer le statut
+        this.statusInterval = setInterval(async () => {
             try {
                 const res: any = await this.api.getStatus(this.source).toPromise();
                 if (res.in_progress) {
-                    this.currentCompany = res.in_progress; // objet unique
+                    this.currentCompany = res.in_progress;
                     this.progressPercent = Math.min(100, Math.round((res.in_progress.current_index / f.max_results) * 100));
                 }
             } catch (e) {
                 console.error('Erreur récupération statut:', e);
             }
         }, 2500);
-
+    
         const timer = setInterval(() => this.updateElapsed(), 1000);
-
-        this.api.scrape(this.source, {
+    
+        // Stocker la souscription pour pouvoir l'annuler
+        this.scrapingSubscription = this.api.scrape(this.source, {
             query: f.query.label!,
             location: location!,
             max_results: f.max_results!
         }).subscribe({
             next: (res) => {
-                this.results = res.results || [];
-                this.currentPage = 1;
-                this.updatePage();
-                this.loading = false;
-                clearInterval(timer);
-                clearInterval(statusInterval);
-                this.updateElapsed(true);
-                this.scrapingModal.hide();
+                this.handleScrapingComplete(res, timer);
             },
             error: (err) => {
-                this.loading = false;
-                clearInterval(timer);
-                clearInterval(statusInterval);
-                this.scrapingModal.hide();
-                alert(`Erreur scraping: ${err?.error?.message || err.message || err}`);
+                this.handleScrapingError(err, timer);
             }
         });
     }
+    
+    private handleScrapingComplete(res: any, timer: any) {
+        this.results = res.results || [];
+        this.currentPage = 1;
+        this.updatePage();
+        this.loading = false;
+        this.scrapingInProgress = false;
+        clearInterval(timer);
+        clearInterval(this.statusInterval);
+        this.updateElapsed(true);
+        this.scrapingModal.hide();
+        
+        Swal.fire({
+            title: 'Succès !',
+            text: 'Scraping terminé avec succès',
+            icon: 'success',
+            confirmButtonText: 'OK'
+        });
+    }
+    
+    private handleScrapingError(err: any, timer: any) {
+        this.loading = false;
+        this.scrapingInProgress = false;
+        clearInterval(timer);
+        clearInterval(this.statusInterval);
+        this.scrapingModal.hide();
+        
+        Swal.fire({
+            title: 'Erreur !',
+            text: `Erreur scraping: ${err?.error?.message || err.message || err}`,
+            icon: 'error',
+            confirmButtonText: 'OK'
+        });
+    }
 
-
+    stopScraping() {
+        if (!this.scrapingInProgress) return;
+    
+        Swal.fire({
+            title: 'Arrêter le scraping ?',
+            text: 'Êtes-vous sûr de vouloir arrêter le scraping en cours ?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Oui, arrêter',
+            cancelButtonText: 'Non, continuer'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                this.api.stopScraping(this.source).subscribe({
+                    next: (response) => {
+                        this.scrapingInProgress = false;
+                        if (this.scrapingSubscription) {
+                            this.scrapingSubscription.unsubscribe();
+                        }
+                        clearInterval(this.statusInterval);
+                        this.scrapingModal.hide();
+                        
+                        Swal.fire({
+                            title: 'Arrêté !',
+                            text: response.message || 'Scrapping arrêté avec succès',
+                            icon: 'info',
+                            confirmButtonText: 'OK'
+                        });
+                    },
+                    error: (err) => {
+                        Swal.fire({
+                            title: 'Erreur !',
+                            text: `Erreur lors de l'arrêt: ${err?.error?.message || err.message || err}`,
+                            icon: 'error',
+                            confirmButtonText: 'OK'
+                        });
+                    }
+                });
+            }
+        });
+    }
 
     updateElapsed(final = false) {
         if (!this.startTime) return;
@@ -462,7 +539,26 @@ export class ScrapingComponent implements OnInit, OnDestroy {
             this.updatePage();
         }
     }
-
+    typeWriter() {
+        if (this.charIndex < this.messages[this.msgIndex].length) {
+          this.currentMessage += this.messages[this.msgIndex].charAt(this.charIndex);
+          this.charIndex++;
+          setTimeout(() => this.typeWriter(), 100); // vitesse de frappe
+        } else {
+          setTimeout(() => this.eraseWriter(), 2000); // pause avant effacer
+        }
+      }
+      
+      eraseWriter() {
+        if (this.charIndex > 0) {
+          this.currentMessage = this.currentMessage.substring(0, this.charIndex - 1);
+          this.charIndex--;
+          setTimeout(() => this.eraseWriter(), 50);
+        } else {
+          this.msgIndex = (this.msgIndex + 1) % this.messages.length;
+          setTimeout(() => this.typeWriter(), 500);
+        }
+    }
     ngOnDestroy() {
         // Nettoyage si nécessaire
     }

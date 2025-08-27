@@ -95,4 +95,17 @@
   .mat-option.mat-active {
     background-color: #d0ebff !important; /* bleu très léger pour option active */
   }
+  .typing {
+    display: inline-block;
+    white-space: nowrap;
+    overflow: hidden;
+    border-right: none; /* pas de curseur */
+    animation: typing 4s steps(30, end) forwards;
+  }
+  
+  @keyframes typing {
+    from { width: 0 }
+    to { width: 100% }
+  }
+
   

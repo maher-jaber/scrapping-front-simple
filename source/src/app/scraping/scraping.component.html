@@ -120,8 +120,8 @@
           <button type="button" class="btn btn-outline-secondary me-2" (click)="reset()">
             <i class="bi bi-arrow-counterclockwise me-2"></i>Réinitialiser
           </button>
-          <button class="btn btn-primary" [disabled]="loading">
-            <span *ngIf="loading" class="spinner-border spinner-border-sm me-2"></span>
+          <button class="btn btn-primary" >
+            
             <i class="bi bi-search me-2"></i>Rechercher
           </button>
         </div>
@@ -218,12 +218,14 @@
           <img src="../../assets/loading.gif" width="150" height="100"/>
         </div>
 
-        <h5 class="mb-2">Scraping en cours...</h5>
+        <h5 class="mb-2 text-primary fst-italic">
+          <span class="typing">{{ currentMessage }}</span>
+        </h5>
         <p>Veuillez patienter, les données sont en cours de récupération.</p>
         <p><strong>Temps restant : {{ elapsed }}</strong></p>
 
         <!-- Progress bar -->
-        <div class="progress mb-2" style="height:20px;">
+        <div class="progress mb-2" style="height:25px; border-radius:12px; overflow:hidden;">
           <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar"
                [style.width.%]="progressPercent"
                [attr.aria-valuenow]="progressPercent"
@@ -234,17 +236,28 @@
         </div>
 
         <!-- Dernière entreprise scrappée -->
-        <h6>Dernière entreprise scrappée :</h6>
-        <div *ngIf="currentCompany" class="card p-2 mb-2">
-          <strong>{{ currentCompany.name }}</strong><br>
-          Tél: {{ currentCompany.phone || 'N/A' }}<br>
-          Adresse: {{ currentCompany.address || 'N/A' }}<br>
-          Status: <span
-            [ngClass]="{'text-success': currentCompany.status==='terminé', 'text-primary': currentCompany.status==='en cours'}">
-            {{ currentCompany.status }}
-          </span>
+        <h6 >
+          Dernière entreprise scrappée ({{ currentCompany?.current_index || 0 }} / {{ currentCompany?.total || 0 }}) :
+        </h6>
+        
+        <div *ngIf="currentCompany" class="card p-2 mb-2 shadow-sm">
+          <div class="d-flex justify-content-between align-items-center">
+            <strong>{{ currentCompany.name }}</strong>
+            <span class="badge bg-info text-dark">{{ currentCompany.status || 'En cours' }}</span>
+          </div>
+          <div class="text-start mt-1">
+            📞 {{ currentCompany.phone || 'N/A' }}<br>
+            📍 {{ currentCompany.address || 'N/A' }}
+          </div>
         </div>
+        <small class="text-muted">Scraping peut prendre quelques minutes selon le volume de données.</small>
+
+      
       </div>
+        <!-- Bouton d'arrêt -->
+        <button type="button" class="btn btn-danger btn-sm" (click)="stopScraping()">
+          <i class="fas fa-stop me-1"></i>Arrêter
+      </button>
     </div>
   </div>
 </div>
