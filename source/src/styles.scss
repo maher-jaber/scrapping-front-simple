@@ -1,2 +1,26 @@
 /* You can add global styles to this file, and also import other style files */
 @import '@angular/material/prebuilt-themes/indigo-pink.css';
+body {
+    background-image: url('/assets/bg-login.png') !important;
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-position: center;
+    min-height: 100vh;
+    margin: 0;
+    
+    align-items: center;
+    justify-content: center;
+  
+    /* effet léger / adoucissement */
+    position: relative;
+  }
+  
+  body::after {
+    content: "";
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(255, 255, 255, 0.4); /* voile blanc transparent */
+    z-index: -1; /* reste derrière le contenu */
+  }
+  

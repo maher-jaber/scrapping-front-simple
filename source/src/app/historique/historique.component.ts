@@ -42,6 +42,7 @@ import { MatSort, MatSortModule } from '@angular/material/sort';
     MatTableModule,       // pour <mat-table>
     MatPaginatorModule,   // pour <mat-paginator>
     MatSortModule   ],
+    styleUrls: ['./historique.component.scss'],
   templateUrl: './historique.component.html'
 })
 export class HistoriqueComponent implements OnInit {

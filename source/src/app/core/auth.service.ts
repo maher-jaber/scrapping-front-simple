@@ -19,7 +19,7 @@ export class AuthService {
     const deviceInfo = navigator.userAgent; // navigateur + OS
     return this.http.post<any>(`${this.api}/token?device_info=${encodeURIComponent(deviceInfo)}`, body.toString(), {
       headers: new HttpHeaders({ 'Content-Type': 'application/x-www-form-urlencoded' })
-    }).pipe(tap(tokens => this.storeTokens(tokens)));
+    }).pipe(tap(tokens => this.storeTokens(tokens,username)));
   }
 
   register(username: string, password: string) {
@@ -60,11 +60,12 @@ export class AuthService {
     });
   }
 
-  storeTokens(tokens: { access_token: string; refresh_token?: string }) {
+  storeTokens(tokens: { access_token: string; refresh_token?: string },userName:string) {
+    localStorage.setItem('userName',userName);
     localStorage.setItem(this.accessKey, tokens.access_token);
     if (tokens.refresh_token) localStorage.setItem(this.refreshKey, tokens.refresh_token);
   }
-
+  getUserName() { return localStorage.getItem('userName'); }
   getAccessToken() { return localStorage.getItem(this.accessKey); }
   getRefreshToken() { return localStorage.getItem(this.refreshKey); }
   isLoggedIn(): boolean { return !!this.getAccessToken(); }

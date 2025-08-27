@@ -30,8 +30,8 @@ declare var bootstrap: any;
 })
 
 export class ScrapingComponent implements OnInit, OnDestroy {
-    
-   
+
+
     inProgress: any[] = [];
     // Observables pour l'autocomplete
     filteredNafOptions!: Observable<any[]>;
@@ -294,30 +294,40 @@ export class ScrapingComponent implements OnInit, OnDestroy {
         if (!this.currentCompany) return 0;
         return Math.min(100, Math.round((this.currentCompany.current_index / this.currentCompany.total) * 100));
     }
-    
+
     get lastCompany(): any {
         return this.currentCompany;
     }
-      submit() {
+    submit() {
         if (this.form.invalid) return;
-    
+
         const f = this.form.value;
         const query = typeof f.query === 'string' ? f.query : f.query?.label;
         const location =
             f.ville ||
             (typeof f.departement === 'string' ? f.departement : f.departement?.departement) ||
             f.region;
-        if (!location || !query || !(0 < f.max_results && f.max_results <= 1000)) return;
-    
+        if (!location || !query || !(0 < f.max_results && f.max_results <= 1000)) {
+            Swal.fire({
+                title: 'Erreur !',
+                text: 'Vous devez remplir tous les champs !',
+                icon: 'error',
+                confirmButtonText: 'OK'
+            });
+            return;
+        }
+
+
+
         this.loading = true;
         this.startTime = Date.now();
         this.elapsed = '0m 0s';
         this.currentCompany = null; // nouvelle variable pour la dernière entreprise
         this.progressPercent = 0;   // progress bar
-    
+
         // Ouvre modal
         this.scrapingModal.show();
-    
+
         // ⬅ Polling toutes les 1,5s pour récupérer la dernière entreprise et le progress
         const statusInterval = setInterval(async () => {
             try {
@@ -330,9 +340,9 @@ export class ScrapingComponent implements OnInit, OnDestroy {
                 console.error('Erreur récupération statut:', e);
             }
         }, 2500);
-    
+
         const timer = setInterval(() => this.updateElapsed(), 1000);
-    
+
         this.api.scrape(this.source, {
             query: f.query.label!,
             location: location!,
@@ -357,15 +367,25 @@ export class ScrapingComponent implements OnInit, OnDestroy {
             }
         });
     }
-    
-    
+
+
 
     updateElapsed(final = false) {
         if (!this.startTime) return;
-        const secs = Math.floor((Date.now() - this.startTime) / 1000);
-        const m = Math.floor(secs / 60);
-        const s = secs % 60;
-        this.elapsed = `${m}m ${s}s${final ? '' : ''}`;
+    
+        // On ne s'intéresse qu'au temps restant
+        if (!final && this.progressPercent > 0 && this.progressPercent < 100) {
+            const elapsedSecs = Math.floor((Date.now() - this.startTime) / 1000);
+            const remainingSecs = Math.floor(elapsedSecs * (100 - this.progressPercent) / this.progressPercent);
+            const remMinutes = Math.floor(remainingSecs / 60);
+            const remSeconds = remainingSecs % 60;
+    
+            this.elapsed = `${remMinutes}m ${remSeconds}s restantes`;
+        } else if (final || this.progressPercent >= 100) {
+            this.elapsed = `0m 0s restantes`;
+        } else {
+            this.elapsed = `Calcul en cours...`;
+        }
     }
 
     updatePage() {
@@ -401,27 +421,27 @@ export class ScrapingComponent implements OnInit, OnDestroy {
     }
     private buildCsvFilename(): string {
         const f = this.form.value;
-      
+
         // code NAF
         const codeNaf = typeof f.query === 'object' ? f.query.id : (f.query || 'NAF');
-      
+
         // location (ville / dep / région)
         const location =
-          f.ville ||
-          (typeof f.departement === 'string' ? f.departement : f.departement?.departement) ||
-          f.region || 'Location';
-      
+            f.ville ||
+            (typeof f.departement === 'string' ? f.departement : f.departement?.departement) ||
+            f.region || 'Location';
+
         // timestamp
         const now = new Date();
-        const timestamp = `${now.getFullYear()}-${(now.getMonth()+1).toString().padStart(2,'0')}-${now.getDate().toString().padStart(2,'0')}_${now.getHours()}h${now.getMinutes()}m`;
-      
+        const timestamp = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')}_${now.getHours()}h${now.getMinutes()}m`;
+
         // nettoyer caractères spéciaux
         const safeCode = String(codeNaf).replace(/[^a-zA-Z0-9_-]/g, '');
-        const safeLoc  = String(location).replace(/[^a-zA-Z0-9_-]/g, '');
-      
+        const safeLoc = String(location).replace(/[^a-zA-Z0-9_-]/g, '');
+
         return `${safeCode}_${safeLoc}_${timestamp}.csv`;
-      }
-      
+    }
+
     formatFRDate(str?: string) {
         if (!str) return '';
         const d = new Date(str.replace(' ', 'T'));

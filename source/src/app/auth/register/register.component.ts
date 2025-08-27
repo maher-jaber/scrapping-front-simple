@@ -6,6 +6,7 @@ import { CommonModule } from '@angular/common';
 @Component({
   selector: 'app-register',
   imports: [CommonModule,ReactiveFormsModule],
+  styleUrls: ['./register.component.scss'],
   templateUrl: './register.component.html'
 })
 export class RegisterComponent {

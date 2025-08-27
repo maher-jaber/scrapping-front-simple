@@ -1,6 +1,6 @@
-<nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm">
+<nav *ngIf="auth.isLoggedIn()" class="navbar navbar-expand-lg navbar-light bg-light shadow-sm">
   <div class="container-fluid">
-    <a class="navbar-brand fw-bold text-primary" routerLink="/">Scrapping Application</a>
+    <a class="navbar-brand fw-bold text-primary" routerLink="/">DataScraper Pro</a>
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav">
       <span class="navbar-toggler-icon"></span>
     </button>
@@ -10,11 +10,11 @@
         <li class="nav-item"><a class="nav-link" routerLink="/historique" routerLinkActive="active">Historique</a></li>
       </ul>
       <div class="d-flex">
-        <!-- Si pas connecté -->
-        <button *ngIf="!auth.isLoggedIn()" class="btn btn-outline-primary me-2" routerLink="/login">Se connecter</button>
+      
+       
         <!-- Si connecté -->
-        <button *ngIf="auth.isLoggedIn()" class="btn btn-outline-danger me-2" (click)="deconnect()">Se déconnecter</button>
-        <button *ngIf="auth.isLoggedIn()" class="btn btn-warning" routerLink="/register">Créer un compte</button>
+        <button *ngIf="auth.isLoggedIn()" class="btn btn-danger me-2" (click)="deconnect()">Se déconnecter</button>
+        <button *ngIf="auth.isLoggedIn()  && auth.getUserName() == 'admin'" class="btn btn-primary" routerLink="/register">Créer un compte</button>
       </div>
     </div>
   </div>

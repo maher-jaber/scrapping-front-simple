@@ -3,10 +3,20 @@ import { Router } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthService } from '../../core/auth.service';
 import { CommonModule } from '@angular/common';
+// Importation des icônes Font Awesome
+
+import { 
+  faUser, 
+  faLock, 
+  faSignInAlt, 
+  faDatabase,
+  faSpinner 
+} from '@fortawesome/free-solid-svg-icons';
 
 @Component({
   selector: 'app-login',
   imports: [CommonModule,ReactiveFormsModule],
+  styleUrls: ['./login.component.scss'],
   templateUrl: './login.component.html'
 })
 export class LoginComponent {

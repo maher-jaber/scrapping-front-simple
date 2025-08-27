@@ -1,25 +1,62 @@
-<div class="row justify-content-center">
-    <div class="col-12 col-md-6 col-lg-4">
-      <div class="card shadow">
-        <div class="card-header"><h5 class="mb-0">Connexion</h5></div>
+<div class="container">
+  <div class="row justify-content-center">
+    <div class="col-12 col-md-8 col-lg-6 col-xl-5">
+      <div class="card login-card shadow">
+        <div class="card-header text-center">
+          <div class="logo-container">
+            <i class="fas fa-database logo-icon"></i>
+            <h3 class="mb-0">DataScraper Pro</h3>
+          </div>
+          <p class="text-muted mt-2" style="color: white !important;">Accédez à votre tableau de bord</p>
+        </div>
+
         <div class="card-body">
+          <!-- Form Angular -->
           <form (ngSubmit)="submit()" [formGroup]="form">
-            <div class="mb-3">
+
+            <!-- Username -->
+            <div class="mb-4">
               <label class="form-label">Nom d'utilisateur</label>
-              <input class="form-control" formControlName="username" />
+              <div class="input-group">
+                <span class="input-group-text"><i class="fas fa-user"></i></span>
+                <input
+                  type="text"
+                  class="form-control"
+                  placeholder="Entrez votre nom d'utilisateur"
+                  formControlName="username"
+                />
+              </div>
             </div>
-            <div class="mb-3">
+
+            <!-- Password -->
+            <div class="mb-4">
               <label class="form-label">Mot de passe</label>
-              <input type="password" class="form-control" formControlName="password" />
+              <div class="input-group">
+                <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                <input
+                  type="password"
+                  class="form-control"
+                  placeholder="Entrez votre mot de passe"
+                  formControlName="password"
+                />
+              </div>
             </div>
-            <div *ngIf="error" class="alert alert-danger py-2">{{ error }}</div>
-            <button class="btn btn-primary w-100" [disabled]="loading">
+
+            <!-- Error message -->
+            <div *ngIf="error" class="alert alert-danger py-2">
+              {{ error }}
+            </div>
+
+            <!-- Submit button -->
+            <button class="btn btn-primary w-100 login-btn" [disabled]="loading">
               <span *ngIf="loading" class="spinner-border spinner-border-sm me-2"></span>
+              <i *ngIf="!loading" class="fas fa-sign-in-alt me-2"></i>
               Se connecter
             </button>
+
           </form>
         </div>
       </div>
     </div>
   </div>
-  
+</div>

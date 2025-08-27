@@ -64,3 +64,35 @@
       border-radius: 0 0 0.375rem 0.375rem;
     }
   }
+
+
+  .card-hover {
+    border: 1px solid #ced4da; /* gris clair plus moderne */
+  }
+  
+  .card-hover:hover {
+    box-shadow: 0 0.5rem 1rem rgba(52, 152, 219, 0.1); /* léger bleu au lieu du noir */
+  }
+  
+  .source-card.active {
+    border: 2px solid #3498db !important; /* bleu plus vif */
+    background-color: rgba(52, 152, 219, 0.05) !important; /* fond bleu clair */
+  }
+  
+  .input-group-text {
+    background-color: #f1f3f5; /* gris très clair */
+    border: 1px solid #ced4da;
+  }
+  
+  .form-control:disabled {
+    background-color: #e9ecef; /* gris clair */
+  }
+  
+  .mat-option:hover {
+    background-color: #e9ecef !important; /* gris clair au hover */
+  }
+  
+  .mat-option.mat-active {
+    background-color: #d0ebff !important; /* bleu très léger pour option active */
+  }
+  

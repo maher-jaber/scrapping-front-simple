@@ -1,0 +1,25 @@
+nav.navbar {
+    background: linear-gradient(to right, #3498db, #2c3e50) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+  
+  nav.navbar .navbar-brand,
+  nav.navbar .nav-link,
+  nav.navbar .btn {
+    color: #fff !important;
+  }
+  
+  nav.navbar .nav-link.active {
+    font-weight: 600;
+    text-decoration: underline;
+  }
+  
+  nav.navbar .btn-outline-danger {
+    border-color: #fff;
+    color: #fff;
+  }
+  
+  nav.navbar .btn-outline-danger:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+  

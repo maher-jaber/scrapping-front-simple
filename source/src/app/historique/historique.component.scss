@@ -1,0 +1,89 @@
+/* Cards */
+.card {
+    border: 1px solid #ced4da; /* gris clair */
+    border-radius: 8px;
+    background-color: #fff;
+  }
+  
+  .card-header {
+    background-color: #f8f9fa; /* gris très clair */
+    color: #212529; /* texte foncé */
+    font-weight: 600;
+  }
+  
+  .card-body {
+    background-color: #fff;
+  }
+  
+  /* Boutons */
+  button.mat-raised-button,
+  button.mat-stroked-button {
+    transition: all 0.2s ease;
+  }
+  
+  button.mat-raised-button:hover:not(:disabled),
+  button.mat-stroked-button:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 0.5rem 1rem rgba(52, 152, 219, 0.2);
+  }
+  
+  /* Inputs et autocomplete */
+  mat-form-field {
+    width: 100%;
+  
+    .mat-input-element {
+      background-color: #f1f3f5; /* gris très clair */
+      border-radius: 6px;
+    }
+  }
+  
+  .mat-autocomplete-panel {
+    z-index: 1050 !important;
+    max-height: 250px !important;
+    overflow-y: auto;
+    border-radius: 6px;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+  }
+  
+  .mat-option {
+    font-size: 0.95rem;
+    padding: 0.5rem 1rem;
+  
+    &:hover {
+      background-color: #e9ecef !important; /* gris clair hover */
+    }
+  
+    &.mat-active {
+      background-color: #d0ebff !important; /* bleu très léger option active */
+    }
+  }
+  
+  /* Table */
+  table.mat-table {
+    th.mat-header-cell {
+      background-color: #f1f3f5; /* gris clair */
+      color: #212529;
+    }
+  
+    td.mat-cell {
+      background-color: #fff;
+      color: #212529;
+    }
+  
+    tr.mat-row:hover {
+      background-color: rgba(52, 152, 219, 0.05); /* bleu clair au hover */
+    }
+  }
+  
+  /* Badges */
+  .badge.bg-primary {
+    background-color: #3498db !important; /* bleu vif */
+  }
+  
+  /* Responsive adjustments */
+  @media (max-width: 768px) {
+    .card-body {
+      padding: 1rem;
+    }
+  }
+  
