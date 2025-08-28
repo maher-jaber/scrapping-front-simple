@@ -95,7 +95,7 @@ export class ScrapingComponent implements OnInit, OnDestroy {
             region: this.fb.control<string>(''),
             departement: this.fb.control<string | DepartementOption>(''),
             ville: this.fb.control<string>(''),
-            max_results: this.fb.control<number>(5, {
+            max_results: this.fb.control<number>(1000, {
                 validators: [Validators.required, Validators.min(1), Validators.max(1000)]
             }),
         });
@@ -167,7 +167,23 @@ export class ScrapingComponent implements OnInit, OnDestroy {
             map(value => this._filterVille(typeof value === 'string' ? value : ''))
         );
     }
-
+    copyToClipboard(value: string) {
+        if (!value) return;
+        navigator.clipboard.writeText(value).then(() => {
+          // Optionnel : message console ou toast
+          Swal.fire({
+            title: 'Félicitations !',
+            text: 'Texte copié',
+            icon: 'success',
+            showConfirmButton: false,
+            timer: 2000,           // disparaît après 2 secondes
+            timerProgressBar: true // barre de progression optionnelle
+          });
+        
+        }).catch(err => {
+          console.error('Erreur de copie:', err);
+        });
+      }
     openExportModal() {
         if (!this.results.length) {
             alert('Aucun résultat');
@@ -342,7 +358,7 @@ export class ScrapingComponent implements OnInit, OnDestroy {
         this.loading = true;
         this.startTime = Date.now();
         this.elapsed = '0m 0s';
-        this.currentCompany = null;
+        this.currentCompany = { total: 0, current_index: 0 }; 
         this.progressPercent = 0;
 
         // Ouvre modal
