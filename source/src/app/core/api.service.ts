@@ -20,13 +20,13 @@ export interface HistoryRow {
 export class ApiService {
   private api = environment.apiUrl;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) { }
 
-  scrape(source: 'googlemaps'|'pagesjaunes', payload: ScrapeRequest) {
+  scrape(source: 'googlemaps' | 'pagesjaunes', payload: ScrapeRequest) {
     const url = source === 'googlemaps' ? '/scrape/googlemaps' : '/scrape/pagesjaunes';
     return this.http.post<{ status: string; results: ScrapeResult[] }>(`${this.api}${url}`, payload);
   }
-  getStatus(source: 'googlemaps'|'pagesjaunes'): Observable<any> {
+  getStatus(source: 'googlemaps' | 'pagesjaunes'): Observable<any> {
     const url = source === 'googlemaps' ? '/scrape/googlemaps/status' : '/scrape/pagesjaunes/status';
     return this.http.get<any>(`${this.api}${url}`, {
       headers: this.getAuthHeaders()
@@ -38,12 +38,12 @@ export class ApiService {
       Authorization: `Bearer ${token}`
     });
   }
-  
+
   historique(params: {
     page?: number; per_page?: number; query?: string; location?: string; source?: string; date_from?: string; date_to?: string;
   }) {
     let p = new HttpParams();
-    Object.entries(params).forEach(([k,v]) => { if (v !== undefined && v !== null && v !== '') p = p.set(k, String(v)); });
+    Object.entries(params).forEach(([k, v]) => { if (v !== undefined && v !== null && v !== '') p = p.set(k, String(v)); });
     return this.http.get<{ page: number; per_page: number; total: number; historique: HistoryRow[] }>(`${this.api}/historique`, { params: p });
   }
 
@@ -53,10 +53,13 @@ export class ApiService {
   stopScraping(source: string): Observable<any> {
     const sourceFormated = source === 'googlemaps' ? 'gmaps' : 'pagesjaunes';
     return this.http.post(`${this.api}/scrape/stop?source=${sourceFormated}`, {});
-}
+  }
 
-getStatusSC(source: string): Observable<any> {
-  
+  getStatusSC(source: string): Observable<any> {
+
     return this.http.get(`${this.api}/scrape/${source}/status`);
+  }
+  getScrapedLocations() {
+    return this.http.get<{ locations: { location: string, times_scraped: number }[] }>(`${this.api}/locations`);
 }
 }

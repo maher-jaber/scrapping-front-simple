@@ -88,6 +88,8 @@ export class ScrapingComponent implements OnInit, OnDestroy {
     currentMessage: string = "";
     msgIndex = 0;
     charIndex = 0;
+    scrapedLocations: string[] = []; // stocke les villes déjà scrapées
+    scrapedLocationsMap: { [key: string]: number } = {};
 
     constructor(private fb: FormBuilder, private api: ApiService, private http: HttpClient) {
         this.form = this.fb.group({
@@ -95,7 +97,7 @@ export class ScrapingComponent implements OnInit, OnDestroy {
             region: this.fb.control<string>(''),
             departement: this.fb.control<string | DepartementOption>(''),
             ville: this.fb.control<string>(''),
-            max_results: this.fb.control<number>(1000, {
+            max_results: this.fb.control<number>(5, {
                 validators: [Validators.required, Validators.min(1), Validators.max(1000)]
             }),
         });
@@ -130,8 +132,22 @@ export class ScrapingComponent implements OnInit, OnDestroy {
             this.exportModal = new bootstrap.Modal(modalEl2, { backdrop: 'static', keyboard: false });
         }
         this.typeWriter();
-    }
+        this.updateCities();
 
+    }
+    private updateCities(){
+        // ⬅️ Charger les villes déjà scrapées
+        this.api.getScrapedLocations().subscribe((res: { locations: { location: string, times_scraped: number }[] }) => {
+            // On transforme pour la liste de villes
+            this.scrapedLocations = res.locations.map(l => l.location);
+        
+            // On prépare un mapping location → nombre de scrapes
+            this.scrapedLocationsMap = {};
+            res.locations.forEach(l => {
+                this.scrapedLocationsMap[l.location] = l.times_scraped;
+            });
+        });
+    }
     private setupAutocomplete() {
         // Autocomplete NAF
         this.filteredNafOptions = this.form.get('query')!.valueChanges.pipe(
@@ -170,20 +186,20 @@ export class ScrapingComponent implements OnInit, OnDestroy {
     copyToClipboard(value: string) {
         if (!value) return;
         navigator.clipboard.writeText(value).then(() => {
-          // Optionnel : message console ou toast
-          Swal.fire({
-            title: 'Félicitations !',
-            text: 'Texte copié',
-            icon: 'success',
-            showConfirmButton: false,
-            timer: 2000,           // disparaît après 2 secondes
-            timerProgressBar: true // barre de progression optionnelle
-          });
-        
+            // Optionnel : message console ou toast
+            Swal.fire({
+                title: 'Félicitations !',
+                text: 'Texte copié',
+                icon: 'success',
+                showConfirmButton: false,
+                timer: 2000,           // disparaît après 2 secondes
+                timerProgressBar: true // barre de progression optionnelle
+            });
+
         }).catch(err => {
-          console.error('Erreur de copie:', err);
+            console.error('Erreur de copie:', err);
         });
-      }
+    }
     openExportModal() {
         if (!this.results.length) {
             alert('Aucun résultat');
@@ -358,7 +374,7 @@ export class ScrapingComponent implements OnInit, OnDestroy {
         this.loading = true;
         this.startTime = Date.now();
         this.elapsed = '0m 0s';
-        this.currentCompany = { total: 0, current_index: 0 }; 
+        this.currentCompany = { total: 0, current_index: 0 };
         this.progressPercent = 0;
 
         // Ouvre modal
@@ -408,7 +424,7 @@ export class ScrapingComponent implements OnInit, OnDestroy {
         clearInterval(this.statusInterval);
         this.updateElapsed(true);
         this.scrapingModal.hide();
-
+        this.updateCities();
         Swal.fire({
             title: 'Succès !',
             text: 'Scraping terminé avec succès',
@@ -528,7 +544,7 @@ export class ScrapingComponent implements OnInit, OnDestroy {
         if (p === '...') return;
         this.currentPage = p as number;
         this.updatePage();
-      }
+    }
 
     pages(): number[] {
         const total = Math.ceil(this.results.length / this.itemsPerPage);

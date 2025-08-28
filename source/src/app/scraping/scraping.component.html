@@ -72,6 +72,8 @@
             <mat-autocomplete #villeAuto="matAutocomplete" (optionSelected)="onVilleChange($event)">
               <mat-option *ngFor="let option of filteredVilleOptions | async" [value]="option">
                 {{ option }}
+                <span *ngIf="scrapedLocations.includes(option)"
+                class="badge bg-success ms-2">{{ scrapedLocationsMap[option] || 0 }} fois scrapé</span>
               </mat-option>
             </mat-autocomplete>
           </div>
