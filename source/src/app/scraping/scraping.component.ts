@@ -57,6 +57,7 @@ export class ScrapingComponent implements OnInit, OnDestroy {
     loading = false;
     startTime?: number;
     elapsed = '';
+    totalTimeSrapping = '';
 
     // exclusivité région/département/ville
     regionDisabled = false;
@@ -450,6 +451,13 @@ export class ScrapingComponent implements OnInit, OnDestroy {
     updateElapsed(final = false) {
         if (!this.startTime) return;
     
+        const elapsedSecs2 = Math.floor((Date.now() - this.startTime) / 1000);
+        const h = Math.floor(elapsedSecs2 / 3600);
+        const m = Math.floor((elapsedSecs2 % 3600) / 60);
+        const s = elapsedSecs2 % 60;
+    
+        this.totalTimeSrapping = `${h}h ${m}m ${s}s`;
+
         // On ne s'intéresse qu'au temps restant
         if (!final && this.progressPercent > 0 && this.progressPercent < 100) {
             const elapsedSecs = Math.floor((Date.now() - this.startTime) / 1000);
