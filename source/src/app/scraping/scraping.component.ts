@@ -13,6 +13,7 @@ import { NafOption } from '../models/NafOption';
 import { DepartementOption } from '../models/DepartementOption';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import Swal from 'sweetalert2';
+
 declare var bootstrap: any;
 
 @Component({
@@ -23,13 +24,16 @@ declare var bootstrap: any;
         ReactiveFormsModule,
         MatAutocompleteModule,
         MatInputModule,
-        MatFormFieldModule
+        MatFormFieldModule,
+
     ],
     styleUrls: ['./scraping.component.scss'],
     templateUrl: './scraping.component.html',
 })
 
 export class ScrapingComponent implements OnInit, OnDestroy {
+
+
 
     private statusInterval: any;
     private scrapingInProgress = false; // Nouvelle variable pour suivre l'état
@@ -71,6 +75,7 @@ export class ScrapingComponent implements OnInit, OnDestroy {
     currentItem = 0;
     totalItems = 0;
 
+    totalPages = 0;
     progressPercent = 0;       // valeur de la progress bar
     currentCompany: any = null; // dernière entreprise scrappée
     exportChoice: 'all' | 'scrapped' | 'new' = 'all';
@@ -79,10 +84,10 @@ export class ScrapingComponent implements OnInit, OnDestroy {
         "Scraping en cours...",
         "Analyse des données...",
         "Presque terminé..."
-      ];
-      currentMessage: string = "";
-      msgIndex = 0;
-      charIndex = 0;
+    ];
+    currentMessage: string = "";
+    msgIndex = 0;
+    charIndex = 0;
 
     constructor(private fb: FormBuilder, private api: ApiService, private http: HttpClient) {
         this.form = this.fb.group({
@@ -316,7 +321,7 @@ export class ScrapingComponent implements OnInit, OnDestroy {
             // Si déjà en cours, on ne fait rien ou on propose d'arrêter
             return;
         }
-    
+
         const f = this.form.value;
         const query = typeof f.query === 'string' ? f.query : f.query?.label;
         const location =
@@ -332,17 +337,17 @@ export class ScrapingComponent implements OnInit, OnDestroy {
             });
             return;
         }
-    
+
         this.scrapingInProgress = true; // Marquer le scraping comme démarré
         this.loading = true;
         this.startTime = Date.now();
         this.elapsed = '0m 0s';
         this.currentCompany = null;
         this.progressPercent = 0;
-    
+
         // Ouvre modal
         this.scrapingModal.show();
-    
+
         // ⬅ Polling pour récupérer le statut
         this.statusInterval = setInterval(async () => {
             try {
@@ -355,9 +360,9 @@ export class ScrapingComponent implements OnInit, OnDestroy {
                 console.error('Erreur récupération statut:', e);
             }
         }, 2500);
-    
+
         const timer = setInterval(() => this.updateElapsed(), 1000);
-    
+
         // Stocker la souscription pour pouvoir l'annuler
         this.scrapingSubscription = this.api.scrape(this.source, {
             query: f.query.label!,
@@ -372,9 +377,13 @@ export class ScrapingComponent implements OnInit, OnDestroy {
             }
         });
     }
-    
+
     private handleScrapingComplete(res: any, timer: any) {
+
         this.results = res.results || [];
+        this.totalPages = Math.ceil(this.results.length / this.itemsPerPage);
+
+
         this.currentPage = 1;
         this.updatePage();
         this.loading = false;
@@ -383,7 +392,7 @@ export class ScrapingComponent implements OnInit, OnDestroy {
         clearInterval(this.statusInterval);
         this.updateElapsed(true);
         this.scrapingModal.hide();
-        
+
         Swal.fire({
             title: 'Succès !',
             text: 'Scraping terminé avec succès',
@@ -391,14 +400,14 @@ export class ScrapingComponent implements OnInit, OnDestroy {
             confirmButtonText: 'OK'
         });
     }
-    
+
     private handleScrapingError(err: any, timer: any) {
         this.loading = false;
         this.scrapingInProgress = false;
         clearInterval(timer);
         clearInterval(this.statusInterval);
         this.scrapingModal.hide();
-        
+
         Swal.fire({
             title: 'Erreur !',
             text: `Erreur scraping: ${err?.error?.message || err.message || err}`,
@@ -409,7 +418,7 @@ export class ScrapingComponent implements OnInit, OnDestroy {
 
     stopScraping() {
         if (!this.scrapingInProgress) return;
-    
+
         Swal.fire({
             title: 'Arrêter le scraping ?',
             text: 'Êtes-vous sûr de vouloir arrêter le scraping en cours ?',
@@ -427,7 +436,7 @@ export class ScrapingComponent implements OnInit, OnDestroy {
                         }
                         clearInterval(this.statusInterval);
                         this.scrapingModal.hide();
-                        
+
                         Swal.fire({
                             title: 'Arrêté !',
                             text: response.message || 'Scrapping arrêté avec succès',
@@ -450,22 +459,29 @@ export class ScrapingComponent implements OnInit, OnDestroy {
 
     updateElapsed(final = false) {
         if (!this.startTime) return;
-    
+
         const elapsedSecs2 = Math.floor((Date.now() - this.startTime) / 1000);
         const h = Math.floor(elapsedSecs2 / 3600);
         const m = Math.floor((elapsedSecs2 % 3600) / 60);
         const s = elapsedSecs2 % 60;
-    
+
         this.totalTimeSrapping = `${h}h ${m}m ${s}s`;
 
         // On ne s'intéresse qu'au temps restant
         if (!final && this.progressPercent > 0 && this.progressPercent < 100) {
             const elapsedSecs = Math.floor((Date.now() - this.startTime) / 1000);
             const remainingSecs = Math.floor(elapsedSecs * (100 - this.progressPercent) / this.progressPercent);
-            const remMinutes = Math.floor(remainingSecs / 60);
-            const remSeconds = remainingSecs % 60;
-    
-            this.elapsed = `${remMinutes}m ${remSeconds}s restantes`;
+
+            const hours = Math.floor(remainingSecs / 3600);
+            const minutes = Math.floor((remainingSecs % 3600) / 60);
+            const seconds = remainingSecs % 60;
+
+            if (hours > 0) {
+                this.elapsed = `${hours}h ${minutes}m ${seconds}s restantes`;
+            } else {
+                this.elapsed = `${minutes}m ${seconds}s restantes`;
+            }
+
         } else if (final || this.progressPercent >= 100) {
             this.elapsed = `0m 0s restantes`;
         } else {
@@ -477,6 +493,26 @@ export class ScrapingComponent implements OnInit, OnDestroy {
         const start = (this.currentPage - 1) * this.itemsPerPage;
         this.paginated = this.results.slice(start, start + this.itemsPerPage);
     }
+    visiblePages(): (number | string)[] {
+        const pages: (number | string)[] = [];
+        const delta = 2;
+        const left = Math.max(2, this.currentPage - delta);
+        const right = Math.min(this.totalPages - 1, this.currentPage + delta);
+
+        pages.push(1);
+        if (left > 2) pages.push('...');
+        for (let i = left; i <= right; i++) pages.push(i);
+        if (right < this.totalPages - 1) pages.push('...');
+        if (this.totalPages > 1) pages.push(this.totalPages);
+
+        return pages;
+    }
+
+    goToPage(p: number | string) {
+        if (p === '...') return;
+        this.currentPage = p as number;
+        this.updatePage();
+      }
 
     pages(): number[] {
         const total = Math.ceil(this.results.length / this.itemsPerPage);
@@ -535,7 +571,7 @@ export class ScrapingComponent implements OnInit, OnDestroy {
     }
 
     goToNextPage() {
-        if (this.currentPage < this.pages().length) {
+        if (this.currentPage < this.totalPages) {
             this.currentPage++;
             this.updatePage();
         }
@@ -549,22 +585,22 @@ export class ScrapingComponent implements OnInit, OnDestroy {
     }
     typeWriter() {
         if (this.charIndex < this.messages[this.msgIndex].length) {
-          this.currentMessage += this.messages[this.msgIndex].charAt(this.charIndex);
-          this.charIndex++;
-          setTimeout(() => this.typeWriter(), 100); // vitesse de frappe
+            this.currentMessage += this.messages[this.msgIndex].charAt(this.charIndex);
+            this.charIndex++;
+            setTimeout(() => this.typeWriter(), 100); // vitesse de frappe
         } else {
-          setTimeout(() => this.eraseWriter(), 2000); // pause avant effacer
+            setTimeout(() => this.eraseWriter(), 2000); // pause avant effacer
         }
-      }
-      
-      eraseWriter() {
+    }
+
+    eraseWriter() {
         if (this.charIndex > 0) {
-          this.currentMessage = this.currentMessage.substring(0, this.charIndex - 1);
-          this.charIndex--;
-          setTimeout(() => this.eraseWriter(), 50);
+            this.currentMessage = this.currentMessage.substring(0, this.charIndex - 1);
+            this.charIndex--;
+            setTimeout(() => this.eraseWriter(), 50);
         } else {
-          this.msgIndex = (this.msgIndex + 1) % this.messages.length;
-          setTimeout(() => this.typeWriter(), 500);
+            this.msgIndex = (this.msgIndex + 1) % this.messages.length;
+            setTimeout(() => this.typeWriter(), 500);
         }
     }
     ngOnDestroy() {

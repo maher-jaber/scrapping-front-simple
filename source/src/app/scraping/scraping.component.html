@@ -120,8 +120,8 @@
           <button type="button" class="btn btn-outline-secondary me-2" (click)="reset()">
             <i class="bi bi-arrow-counterclockwise me-2"></i>Réinitialiser
           </button>
-          <button class="btn btn-primary" >
-            
+          <button class="btn btn-primary">
+
             <i class="bi bi-search me-2"></i>Rechercher
           </button>
         </div>
@@ -133,15 +133,10 @@
 <div *ngIf="results.length" class="card shadow">
   <div class="card-body">
     <div class="d-flex justify-content-between align-items-center mb-2">
-      <div>
-        <span class="badge bg-primary me-2">{{ results.length }} résultat(s) </span>
-        <span class="badge bg-info">Durée: {{ totalTimeSrapping }}</span>
-      </div>
-      <button class="btn btn-success" (click)="openExportModal()">
-        <i class="bi bi-file-earmark-excel me-2"></i>Exporter en CSV
-      </button>
+      <div> <span class="badge bg-primary me-2">{{ results.length }} résultat(s) </span> <span
+          class="badge bg-info">Durée: {{ totalTimeSrapping }}</span> </div> <button class="btn btn-success"
+        (click)="openExportModal()"> <i class="bi bi-file-earmark-excel me-2"></i>Exporter en CSV </button>
     </div>
-
     <div class="table-responsive">
       <table class="table table-hover align-middle">
         <thead class="table-light">
@@ -161,52 +156,50 @@
           <tr *ngFor="let r of paginated">
             <td>{{ r.name || 'N/A' }}</td>
             <td>{{ r.address || 'N/A' }}</td>
-            <td>
-              <ng-container *ngIf="r.phone; else na">
-                <div *ngFor="let num of (r.phone || '').split(',')">
-                  <a [href]="'tel:'+num.trim()">{{ num.trim() }}</a>
+            <td> <ng-container *ngIf="r.phone; else na">
+                <div *ngFor="let num of (r.phone || '').split(',')"> <a [href]="'tel:'+num.trim()">{{ num.trim() }}</a>
                 </div>
-              </ng-container>
-              <ng-template #na>N/A</ng-template>
-            </td>
-            <td>
-              <ng-container *ngIf="r.website; else n2">
-                <a [href]="r.website.startsWith('http') ? r.website : 'https://' + r.website" target="_blank">
-                  {{ r.website }}
-                </a>
-              </ng-container>
-              <ng-template #n2>N/A</ng-template>
-            </td>
+              </ng-container> <ng-template #na>N/A</ng-template> </td>
+            <td> <ng-container *ngIf="r.website; else n2"> <a
+                  [href]="r.website.startsWith('http') ? r.website : 'https://' + r.website" target="_blank"> {{
+                  r.website }} </a> </ng-container> <ng-template #n2>N/A</ng-template> </td>
             <td>{{ r.plus_code || 'N/A' }}</td>
             <td>{{ r.horaires || 'N/A' }}</td>
             <td>{{ r.note || 'N/A' }}</td>
-            <td>
-              <span class="badge" [ngClass]="r.already_scrapped ? 'bg-primary' : 'bg-success'">
-                {{ r.already_scrapped ? 'Deja scrappé' : 'Nouveau' }}
-              </span>
-            </td>
+            <td> <span class="badge" [ngClass]="r.already_scrapped ? 'bg-primary' : 'bg-success'"> {{ r.already_scrapped
+                ? 'Deja scrappé' : 'Nouveau' }} </span> </td>
             <td>{{ formatFRDate(r.scraped_at) || 'N/A' }}</td>
           </tr>
         </tbody>
       </table>
-    </div>
-
-    <!-- pagination -->
+    </div> <!-- pagination -->
     <nav class="mt-3">
       <ul class="pagination justify-content-center">
-        <li class="page-item" [class.disabled]="currentPage===1">
-          <a class="page-link" (click)="goToPrevPage()">&laquo;</a>
+        <!-- Prev -->
+        <li class="page-item" [class.disabled]="currentPage === 1">
+          <a class="page-link" (click)="goToPrevPage()" style="cursor: pointer;">&laquo;</a>
         </li>
-        <li class="page-item" *ngFor="let p of pages()" [class.active]="p===currentPage">
-          <a class="page-link" (click)="currentPage=p; updatePage()">{{ p }}</a>
+    
+        <!-- Pages -->
+        <li *ngFor="let p of visiblePages()" 
+            class="page-item" 
+            [class.active]="p === currentPage"
+            [class.disabled]="p === '...'">
+          <a class="page-link" 
+             (click)="p !== '...' && goToPage(p)" 
+             style="cursor: pointer;">{{ p }}</a>
         </li>
-        <li class="page-item" [class.disabled]="currentPage===pages().length">
-          <a class="page-link" (click)="goToNextPage()">&raquo;</a>
+    
+        <!-- Next -->
+        <li class="page-item" [class.disabled]="currentPage === totalPages">
+          <a class="page-link" (click)="goToNextPage()" style="cursor: pointer;">&raquo;</a>
         </li>
       </ul>
     </nav>
+    
   </div>
 </div>
+
 
 
 <!-- Modal Scraping -->
@@ -214,23 +207,25 @@
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content text-center p-3">
       <div class="modal-body">
-        <div class="mb-3">
-          <img src="../../assets/loading.gif" width="150" height="100"/>
+        <div *ngIf="currentCompany?.total > 0" class="mb-3">
+          <img src="../../assets/loading.gif" width="150" height="100" />
+        </div>
+        <div *ngIf="!currentCompany?.total" class="mb-3">
+          <img src="../../assets/demarrage.gif" width="250" height="200" />
         </div>
 
-        <h5 class="mb-2 text-primary fst-italic">
+        <h5 *ngIf="currentCompany?.total > 0" class="mb-2 text-primary fst-italic">
           <span class="typing">{{ currentMessage }}</span>
         </h5>
-        <p>Veuillez patienter, les données sont en cours de récupération.</p>
-        <p><strong>Temps restant : {{ elapsed }}</strong></p>
+        <p *ngIf="currentCompany?.total > 0">Veuillez patienter, les données sont en cours de récupération.</p>
+        <p *ngIf="currentCompany?.total > 0"><strong>Temps restant : {{ elapsed }}</strong></p>
 
         <!-- Progress bar -->
-        <div class="progress mb-2" style="height:25px; border-radius:12px; overflow:hidden;">
+        <div *ngIf="currentCompany?.total > 0" class="progress mb-2"
+          style="height:25px; border-radius:12px; overflow:hidden;">
           <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar"
-               [style.width.%]="progressPercent"
-               [attr.aria-valuenow]="progressPercent"
-               aria-valuemin="0"
-               aria-valuemax="100">
+            [style.width.%]="progressPercent" [attr.aria-valuenow]="progressPercent" aria-valuemin="0"
+            aria-valuemax="100">
             {{ progressPercent }}%
           </div>
         </div>
@@ -239,10 +234,10 @@
         <h6 *ngIf="!currentCompany?.total" class="scraping-start">
           🚀 Démarrage du moteur de scraping !!
         </h6>
-        <h6 *ngIf="currentCompany?.total > 0" >
+        <h6 *ngIf="currentCompany?.total > 0">
           Dernière entreprise scrappée ({{ currentCompany?.current_index || 0 }} / {{ currentCompany?.total || 0 }}) :
         </h6>
-        
+
         <div *ngIf="currentCompany?.total > 0" class="card p-2 mb-2 shadow-sm">
           <div class="d-flex justify-content-between align-items-center">
             <strong>{{ currentCompany.name }}</strong>
@@ -255,11 +250,11 @@
         </div>
         <small class="text-muted">Scraping peut prendre quelques minutes selon le volume de données.</small>
 
-      
+
       </div>
-        <!-- Bouton d'arrêt -->
-        <button type="button" class="btn btn-danger btn-sm" (click)="stopScraping()">
-          <i class="fas fa-stop me-1"></i>Arrêter
+      <!-- Bouton d'arrêt -->
+      <button *ngIf="currentCompany?.total > 0" type="button" class="btn btn-danger btn-sm" (click)="stopScraping()">
+        <i class="fas fa-stop me-1"></i>Arrêter
       </button>
     </div>
   </div>
