@@ -55,7 +55,7 @@
             <mat-autocomplete #departementAuto="matAutocomplete" (optionSelected)="onDepChange($event)"
               [displayWith]="displayDepartementFn.bind(this)">
               <mat-option *ngFor="let option of filteredDepartementOptions | async" [value]="option">
-                {{ option.numero }} - {{ option.departement }} - {{ option.region }}
+                {{ option.code_departement }} - {{ option.nom_departement }} - {{ option.nom_region }}
                 <span *ngIf="scrapedLocations.includes(option.departement)"
                 class="badge bg-success ms-2">{{ scrapedLocationsMap[option.departement] || 0 }} fois scrapé</span>
               </mat-option>

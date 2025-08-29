@@ -13,6 +13,7 @@ import { NafOption } from '../models/NafOption';
 import { DepartementOption } from '../models/DepartementOption';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import Swal from 'sweetalert2';
+import { GeoService } from '../core/geo.service';
 
 declare var bootstrap: any;
 
@@ -47,7 +48,7 @@ export class ScrapingComponent implements OnInit, OnDestroy {
 
     // datasets
     regions: string[] = [];
-    departements: { numero: string; departement: string; region: string }[] = [];
+    departements: { code_departement: string; nom_departement: string; nom_region: string }[] = [];
     villes: string[] = [];
     nafData: any[] = [];
 
@@ -91,7 +92,7 @@ export class ScrapingComponent implements OnInit, OnDestroy {
     scrapedLocations: string[] = []; // stocke les villes déjà scrapées
     scrapedLocationsMap: { [key: string]: number } = {};
 
-    constructor(private fb: FormBuilder, private api: ApiService, private http: HttpClient) {
+    constructor(private fb: FormBuilder, private api: ApiService,private geoService: GeoService, private http: HttpClient) {
         this.form = this.fb.group({
             query: this.fb.control<string | NafOption>(''),
             region: this.fb.control<string>(''),
@@ -104,7 +105,7 @@ export class ScrapingComponent implements OnInit, OnDestroy {
     }
 
     ngOnInit() {
-        this.http.get<string[]>('assets/reg_names.json').subscribe(d => {
+       /* this.http.get<string[]>('assets/reg_names.json').subscribe(d => {
             this.regions = d.sort();
             this.setupAutocomplete();
         });
@@ -115,6 +116,12 @@ export class ScrapingComponent implements OnInit, OnDestroy {
 
         this.http.get<any[]>('assets/villes.json').subscribe(d => {
             this.villes = d.map(v => v.Nom_commune);
+        });*/
+        this.geoService.getAll().subscribe(({regions, departements, communes}) => {
+            this.regions = regions;
+            this.departements = departements;
+            this.villes = communes;
+            this.setupAutocomplete();
         });
 
         this.http.get<any[]>('assets/naf-activity.json').subscribe(d => {
@@ -272,9 +279,9 @@ export class ScrapingComponent implements OnInit, OnDestroy {
         if (typeof value !== 'string') return [];
         const filterValue = value.toLowerCase();
         return this.departements.filter(option =>
-            option.departement.toLowerCase().includes(filterValue) ||
-            option.numero.toLowerCase().includes(filterValue) ||
-            option.region.toLowerCase().includes(filterValue)
+            option.nom_departement.toLowerCase().includes(filterValue) ||
+            option.code_departement.toLowerCase().includes(filterValue) ||
+            option.nom_region.toLowerCase().includes(filterValue)
         ).slice(0, 20);
     }
 
