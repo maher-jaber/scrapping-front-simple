@@ -92,7 +92,7 @@ export class ScrapingComponent implements OnInit, OnDestroy {
     scrapedLocations: string[] = []; // stocke les villes déjà scrapées
     scrapedLocationsMap: { [key: string]: number } = {};
 
-    constructor(private fb: FormBuilder, private api: ApiService,private geoService: GeoService, private http: HttpClient) {
+    constructor(private fb: FormBuilder, private api: ApiService, private geoService: GeoService, private http: HttpClient) {
         this.form = this.fb.group({
             query: this.fb.control<string | NafOption>(''),
             region: this.fb.control<string>(''),
@@ -105,19 +105,19 @@ export class ScrapingComponent implements OnInit, OnDestroy {
     }
 
     ngOnInit() {
-       /* this.http.get<string[]>('assets/reg_names.json').subscribe(d => {
-            this.regions = d.sort();
-            this.setupAutocomplete();
-        });
-
-        this.http.get<any[]>('assets/dep_names.json').subscribe(d => {
-            this.departements = d.sort((a, b) => a.departement.localeCompare(b.departement));
-        });
-
-        this.http.get<any[]>('assets/villes.json').subscribe(d => {
-            this.villes = d.map(v => v.Nom_commune);
-        });*/
-        this.geoService.getAll().subscribe(({regions, departements, communes}) => {
+        /* this.http.get<string[]>('assets/reg_names.json').subscribe(d => {
+             this.regions = d.sort();
+             this.setupAutocomplete();
+         });
+ 
+         this.http.get<any[]>('assets/dep_names.json').subscribe(d => {
+             this.departements = d.sort((a, b) => a.departement.localeCompare(b.departement));
+         });
+ 
+         this.http.get<any[]>('assets/villes.json').subscribe(d => {
+             this.villes = d.map(v => v.Nom_commune);
+         });*/
+        this.geoService.getAll().subscribe(({ regions, departements, communes }) => {
             this.regions = regions;
             this.departements = departements;
             this.villes = communes;
@@ -142,12 +142,12 @@ export class ScrapingComponent implements OnInit, OnDestroy {
         this.updateCities();
 
     }
-    private updateCities(){
+    private updateCities() {
         // ⬅️ Charger les villes déjà scrapées
         this.api.getScrapedLocations().subscribe((res: { locations: { location: string, times_scraped: number }[] }) => {
             // On transforme pour la liste de villes
             this.scrapedLocations = res.locations.map(l => l.location);
-        
+
             // On prépare un mapping location → nombre de scrapes
             this.scrapedLocationsMap = {};
             res.locations.forEach(l => {
@@ -179,7 +179,7 @@ export class ScrapingComponent implements OnInit, OnDestroy {
                 this._filterDepartement(
                     typeof value === 'string'
                         ? value
-                        : (value as DepartementOption)?.departement || ''
+                        : (value as DepartementOption)?.nom_departement || ''
                 )
             )
         );
@@ -296,9 +296,10 @@ export class ScrapingComponent implements OnInit, OnDestroy {
     displayNafFn(naf: any): string {
         return naf && naf.label ? `${naf.id} - ${naf.label}` : '';
     }
-
-    displayDepartementFn(dep: any): string {
-        return dep ? `${dep.numero} - ${dep.departement} - ${dep.region}` : '';
+    displayDepartementFn(dep: DepartementOption | string): string {
+        if (!dep) return '';
+        if (typeof dep === 'string') return dep; // si l’utilisateur tape du texte libre
+        return `${dep.code_departement} - ${dep.nom_departement} - ${dep.nom_region}`;
     }
 
     setSource(val: 'googlemaps' | 'pagesjaunes') { this.source = val; }
@@ -316,7 +317,7 @@ export class ScrapingComponent implements OnInit, OnDestroy {
 
     onDepChange($event: any) {
         const v = this.form.value.departement;
-        const label = typeof v === 'object' ? v.departement : v; // gère objet + string
+        const label = typeof v === 'object' ? v.nom_departement : v; // corrige ici
         if (label && label.trim() !== '') {
             this.form.get('region')?.disable();
             this.form.get('ville')?.disable();
@@ -365,8 +366,9 @@ export class ScrapingComponent implements OnInit, OnDestroy {
         const query = typeof f.query === 'string' ? f.query : f.query?.label;
         const location =
             f.ville ||
-            (typeof f.departement === 'string' ? f.departement : f.departement?.departement) ||
+            (typeof f.departement === 'string' ? f.departement : f.departement?.nom_departement) ||
             f.region;
+
         if (!location || !query || !(0 < f.max_results && f.max_results <= 1000)) {
             Swal.fire({
                 title: 'Erreur !',
@@ -445,7 +447,7 @@ export class ScrapingComponent implements OnInit, OnDestroy {
         this.scrapingInProgress = false;
         clearInterval(timer);
         clearInterval(this.statusInterval);
-    
+
         // Cas spécifique si le scraping est déjà en cours
         if (err?.status === 400 && err?.error?.detail?.includes("déjà en cours")) {
             Swal.fire({
@@ -459,7 +461,7 @@ export class ScrapingComponent implements OnInit, OnDestroy {
             });
             return;
         }
-    
+
         // Erreur générique
         Swal.fire({
             title: 'Erreur !',
@@ -471,8 +473,8 @@ export class ScrapingComponent implements OnInit, OnDestroy {
             this.scrapingModal.hide();
         });
     }
-    
-    
+
+
 
     stopScraping() {
         if (!this.scrapingInProgress) return;

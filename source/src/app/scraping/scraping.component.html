@@ -280,6 +280,9 @@
         <h6 *ngIf="!currentCompany?.total" class="scraping-start">
           🚀 Démarrage du moteur de scraping !!
         </h6>
+
+        <h6 *ngIf="currentCompany?.total > 0" >Commune: {{ currentCompany?.commune || 'Chargement...' }} </h6>
+
         <h6 *ngIf="currentCompany?.total > 0">
           Dernière entreprise scrappée ({{ currentCompany?.current_index || 0 }} / {{ currentCompany?.total || 0 }}) :
         </h6>
