@@ -438,15 +438,34 @@ export class ScrapingComponent implements OnInit, OnDestroy {
         this.scrapingInProgress = false;
         clearInterval(timer);
         clearInterval(this.statusInterval);
-        this.scrapingModal.hide();
-
+    
+        // Cas spécifique si le scraping est déjà en cours
+        if (err?.status === 400 && err?.error?.detail?.includes("déjà en cours")) {
+            Swal.fire({
+                title: 'Scraping déjà actif',
+                text: err.error.detail,
+                icon: 'warning',
+                confirmButtonText: 'OK'
+            }).then(() => {
+                // On cache le modal après que l'utilisateur ait cliqué sur OK
+                this.scrapingModal.hide();
+            });
+            return;
+        }
+    
+        // Erreur générique
         Swal.fire({
             title: 'Erreur !',
             text: `Erreur scraping: ${err?.error?.message || err.message || err}`,
             icon: 'error',
             confirmButtonText: 'OK'
+        }).then(() => {
+            // Cache le modal après la fermeture de SweetAlert
+            this.scrapingModal.hide();
         });
     }
+    
+    
 
     stopScraping() {
         if (!this.scrapingInProgress) return;

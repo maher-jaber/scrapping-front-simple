@@ -35,6 +35,8 @@
             <mat-autocomplete #regionAuto="matAutocomplete" (optionSelected)="onRegionChange($event)">
               <mat-option *ngFor="let option of filteredRegionOptions | async" [value]="option">
                 {{ option }}
+                <span *ngIf="scrapedLocations.includes(option)"
+                class="badge bg-success ms-2">{{ scrapedLocationsMap[option] || 0 }} fois scrapé</span>
               </mat-option>
             </mat-autocomplete>
           </div>
@@ -54,6 +56,8 @@
               [displayWith]="displayDepartementFn.bind(this)">
               <mat-option *ngFor="let option of filteredDepartementOptions | async" [value]="option">
                 {{ option.numero }} - {{ option.departement }} - {{ option.region }}
+                <span *ngIf="scrapedLocations.includes(option.departement)"
+                class="badge bg-success ms-2">{{ scrapedLocationsMap[option.departement] || 0 }} fois scrapé</span>
               </mat-option>
             </mat-autocomplete>
           </div>

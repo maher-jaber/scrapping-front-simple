@@ -15,6 +15,9 @@ export interface HistoryRow {
   history_id: number; scraped_at: string; query: string; location: string; source: string;
   name: string; address: string; phone: string; website: string; plus_code: string; note: string; horaires: string;
 }
+export type ScrapeResponse =
+  | { status: "success"; results: ScrapeResult[] }
+  | { status: "error"; message: string };
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
@@ -22,9 +25,9 @@ export class ApiService {
 
   constructor(private http: HttpClient) { }
 
-  scrape(source: 'googlemaps' | 'pagesjaunes', payload: ScrapeRequest) {
+  scrape(source: 'googlemaps' | 'pagesjaunes', payload: ScrapeRequest): Observable<ScrapeResponse> {
     const url = source === 'googlemaps' ? '/scrape/googlemaps' : '/scrape/pagesjaunes';
-    return this.http.post<{ status: string; results: ScrapeResult[] }>(`${this.api}${url}`, payload);
+    return this.http.post<ScrapeResponse>(`${this.api}${url}`, payload);
   }
   getStatus(source: 'googlemaps' | 'pagesjaunes'): Observable<any> {
     const url = source === 'googlemaps' ? '/scrape/googlemaps/status' : '/scrape/pagesjaunes/status';
