@@ -151,31 +151,68 @@ export class HistoriqueComponent implements OnInit {
   ngAfterViewInit() {
     this.dataSource.paginator = this.paginator;
     this.dataSource.sort = this.sort;
+    this.dataSource.sortingDataAccessor = (row, columnName) => {
+      switch (columnName) {
+        case 'scraped_at':
+          return new Date(row.scraped_at); // tri réel par date
+        case 'history_id':
+          return Number(row.history_id); // tri numérique
+        default:
+          return (row as any)[columnName];
+      }
+    };
   }
+
+  
   private updateAllLocations() {
     this.allLocations = [...this.villes, ...this.departements, ...this.regions];
   }
-  loadPage(p: number) {
+  loadPage(p: number, sort?: { active: string; direction: string }) {
     this.page = p;
+  
+    // Tri
+    let sortBy: string | undefined = undefined;
+    let sortOrder: 'asc' | 'desc' | undefined = undefined;
+    if (sort && (sort.direction === 'asc' || sort.direction === 'desc')) {
+      sortBy = sort.active;
+      sortOrder = sort.direction;
+    }
+  
+    // Convertir dates en YYYY-MM-DD si elles existent
+    const dateFromStr = this.dateFrom ? this.formatDateForAPI(this.dateFrom) : undefined;
+    const dateToStr = this.dateTo ? this.formatDateForAPI(this.dateTo) : undefined;
+  
     this.api.historique({
       page: this.page,
       per_page: this.perPage,
-      query: this.filterQuery,
-      location: this.filterLocation,
-      source: this.filterSource,
-      date_from: this.dateFrom || undefined,
-      date_to: this.dateTo || undefined
+      query: this.filterQuery || undefined,
+      location: this.filterLocation || undefined,
+      source: this.filterSource || undefined,
+      date_from: dateFromStr,
+      date_to: dateToStr,
+      sort_by: sortBy,
+      sort_order: sortOrder
     }).subscribe(res => {
       this.rows = res.historique;
       this.total = res.total;
       this.perPage = res.per_page;
       this.totalPages = Math.ceil(this.total / this.perPage);
-
-      // Material Table
       this.dataSource.data = this.rows;
-
     });
   }
+  
+  // Fonction utilitaire pour convertir les dates
+  private formatDateForAPI(date: Date | string): string {
+    const d = date instanceof Date ? date : new Date(date);
+    return d.toISOString().slice(0, 10); // "YYYY-MM-DD"
+  }
+  
+  // Lors du clic sur un tri dans la table
+  onSortChange(sort: { active: string; direction: string }) {
+    this.loadPage(this.page, sort);
+  }
+  
+  
 
   applyFilters() {
     this.filterQuery = this.nafControl.value || '';

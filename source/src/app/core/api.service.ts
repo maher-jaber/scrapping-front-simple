@@ -5,7 +5,7 @@ import { Observable } from 'rxjs';
 import { HttpHeaders } from '@angular/common/http';
 
 
-export interface ScrapeRequest { query: string; location: string; max_results: number; }
+export interface ScrapeRequest { query: string; location: string; max_results: number;searchAll:boolean }
 export interface ScrapeResult {
   id?: number;
   name: string; address: string; phone: string; website: string;
@@ -26,6 +26,7 @@ export class ApiService {
   constructor(private http: HttpClient) { }
 
   scrape(source: 'googlemaps' | 'pagesjaunes', payload: ScrapeRequest): Observable<ScrapeResponse> {
+    console.log("Payload : "+JSON.stringify(payload));
     const url = source === 'googlemaps' ? '/scrape/googlemaps' : '/scrape/pagesjaunes';
     return this.http.post<ScrapeResponse>(`${this.api}${url}`, payload);
   }
@@ -43,7 +44,8 @@ export class ApiService {
   }
 
   historique(params: {
-    page?: number; per_page?: number; query?: string; location?: string; source?: string; date_from?: string; date_to?: string;
+    page?: number; per_page?: number; query?: string; location?: string; source?: string; date_from?: string; date_to?: string;  sort_by?: string;
+    sort_order?: 'asc' | 'desc'
   }) {
     let p = new HttpParams();
     Object.entries(params).forEach(([k, v]) => { if (v !== undefined && v !== null && v !== '') p = p.set(k, String(v)); });

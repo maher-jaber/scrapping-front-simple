@@ -121,6 +121,15 @@
             <div *ngIf="form.get('max_results')?.errors?.['max']">Le maximum est 1000.</div>
           </div>
         </div>
+        <div class="col-md-2">
+          <label class="form-label fw-bold d-block">Rechercher partout</label>
+          <div class="form-check form-switch">
+            <input type="checkbox" class="form-check-input" formControlName="searchAll" id="searchAll">
+            <label class="form-check-label" for="searchAll">
+              {{ form.get('searchAll')?.value ? 'Oui' : 'Non' }}
+            </label>
+          </div>
+        </div>
 
         <div class="col-md-10 text-end">
           <button type="button" class="btn btn-outline-secondary me-2" (click)="reset()">
@@ -281,10 +290,10 @@
           🚀 Démarrage du moteur de scraping !!
         </h6>
 
-        <h6 *ngIf="currentCompany?.total > 0" >Commune: {{ currentCompany?.commune || 'Chargement...' }} </h6>
+        <h6 *ngIf="currentCompany?.total > 0" >Commune: {{ currentCompany?.commune || 'Chargement...' }} ({{ currentCompany?.current_index_commune || 0 }} / {{ currentCompany?.max_communes || 0 }})</h6>
 
         <h6 *ngIf="currentCompany?.total > 0">
-          Dernière entreprise scrappée ({{ currentCompany?.current_index || 0 }} / {{ currentCompany?.total || 0 }}) :
+          Dernière entreprise scrappée <span *ngIf="!(currentCompany?.max_communes > 0)">({{ currentCompany?.current_index || 0 }} / {{ currentCompany?.total || 0 }})</span> :
         </h6>
 
         <div *ngIf="currentCompany?.total > 0" class="card p-2 mb-2 shadow-sm">

@@ -2,7 +2,7 @@
   <div class="card-header"><strong>Filtres</strong></div>
   <div class="card-body">
     <div class="row g-3">
-      
+
       <!-- Query -->
       <div class="col-md-4">
         <mat-form-field class="w-100" appearance="outline">
@@ -20,7 +20,6 @@
             </mat-option>
           </mat-autocomplete>
         </mat-form-field>
-        
       </div>
 
       <!-- Location -->
@@ -95,77 +94,78 @@
   <div class="card-body">
 
     <div *ngIf="rows?.length; else empty">
-      <table mat-table [dataSource]="rows" matSort class="mat-elevation-z1 table-responsive">
+      <!-- ✅ tri branché sur backend -->
+      <table mat-table [dataSource]="rows" matSort (matSortChange)="onSortChange($event)" class="mat-elevation-z1 table-responsive">
 
         <!-- ID -->
         <ng-container matColumnDef="history_id">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>ID</th>
+          <th mat-header-cell *matHeaderCellDef mat-sort-header="history_id">ID</th>
           <td mat-cell *matCellDef="let row">{{ row.history_id }}</td>
         </ng-container>
 
         <!-- Date Scraping -->
         <ng-container matColumnDef="scraped_at">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>Date Scraping</th>
+          <th mat-header-cell *matHeaderCellDef mat-sort-header="scraped_at">Date Scraping</th>
           <td mat-cell *matCellDef="let row">{{ formatFRDate(row.scraped_at) }}</td>
         </ng-container>
 
         <!-- Query -->
         <ng-container matColumnDef="query">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>Query</th>
+          <th mat-header-cell *matHeaderCellDef mat-sort-header="query">Query</th>
           <td mat-cell *matCellDef="let row">{{ row.query }}</td>
         </ng-container>
 
         <!-- Location -->
         <ng-container matColumnDef="location">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>Location</th>
+          <th mat-header-cell *matHeaderCellDef mat-sort-header="location">Location</th>
           <td mat-cell *matCellDef="let row">{{ row.location }}</td>
         </ng-container>
 
         <!-- Source -->
         <ng-container matColumnDef="source">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>Source</th>
+          <th mat-header-cell *matHeaderCellDef mat-sort-header="source">Source</th>
           <td mat-cell *matCellDef="let row">{{ row.source }}</td>
         </ng-container>
 
         <!-- Nom -->
         <ng-container matColumnDef="name">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>Nom</th>
+          <th mat-header-cell *matHeaderCellDef mat-sort-header="name">Nom</th>
           <td mat-cell *matCellDef="let row">{{ row.name }}</td>
         </ng-container>
 
         <!-- Adresse -->
         <ng-container matColumnDef="address">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>Adresse</th>
+          <th mat-header-cell *matHeaderCellDef mat-sort-header="address">Adresse</th>
           <td mat-cell *matCellDef="let row">{{ row.address }}</td>
         </ng-container>
 
         <!-- Téléphone -->
         <ng-container matColumnDef="phone">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>Téléphone</th>
+          <th mat-header-cell *matHeaderCellDef mat-sort-header="phone">Téléphone</th>
           <td mat-cell *matCellDef="let row">{{ row.phone }}</td>
         </ng-container>
 
         <!-- Site Web -->
         <ng-container matColumnDef="website">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>Site Web</th>
+          <th mat-header-cell *matHeaderCellDef mat-sort-header="website">Site Web</th>
           <td mat-cell *matCellDef="let row">{{ row.website }}</td>
         </ng-container>
 
         <!-- Plus Code -->
         <ng-container matColumnDef="plus_code">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>Plus Code</th>
+          <th mat-header-cell *matHeaderCellDef mat-sort-header="plus_code">Plus Code</th>
           <td mat-cell *matCellDef="let row">{{ row.plus_code }}</td>
         </ng-container>
 
         <!-- Note -->
         <ng-container matColumnDef="note">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>Note</th>
+          <th mat-header-cell *matHeaderCellDef mat-sort-header="note">Note</th>
           <td mat-cell *matCellDef="let row">{{ row.note }}</td>
         </ng-container>
 
         <!-- Horaires -->
         <ng-container matColumnDef="horaires">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>Horaires</th>
+          <th mat-header-cell *matHeaderCellDef mat-sort-header="horaires">Horaires</th>
           <td mat-cell *matCellDef="let row">{{ row.horaires }}</td>
         </ng-container>
 
@@ -176,7 +176,11 @@
       </table>
 
       <!-- Paginator -->
-      <mat-paginator [length]="total" [pageSize]="perPage" [pageSizeOptions]="[5,10,25,50]" showFirstLastButtons (page)="onPageChange($event)">
+      <mat-paginator [length]="total"
+                     [pageSize]="perPage"
+                     [pageSizeOptions]="[5,10,25,50]"
+                     showFirstLastButtons
+                     (page)="onPageChange($event)">
       </mat-paginator>
     </div>
 

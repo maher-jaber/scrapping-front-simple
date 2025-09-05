@@ -101,7 +101,23 @@ export class ScrapingComponent implements OnInit, OnDestroy {
             max_results: this.fb.control<number>(5, {
                 validators: [Validators.required, Validators.min(1), Validators.max(1000)]
             }),
+            searchAll: this.fb.control(false)
         });
+        // écouter searchAll
+        this.form.get('searchAll')?.valueChanges.subscribe((value: boolean) => {
+            const maxResultsControl = this.form.get('max_results');
+
+            if (value) {
+                maxResultsControl?.setValue(1000); // valeur par défaut 1000
+                maxResultsControl?.disable(); // désactiver le champ
+            } else {
+                maxResultsControl?.enable(); // réactiver le champ
+                if (!maxResultsControl?.value || maxResultsControl.value === 1000) {
+                    maxResultsControl?.setValue(5); // remettre 5 par défaut si vide ou forcé
+                }
+            }
+        });
+
     }
 
     ngOnInit() {
@@ -347,10 +363,7 @@ export class ScrapingComponent implements OnInit, OnDestroy {
         this.form.get('departement')?.enable();
         this.form.get('ville')?.enable();
     }
-    get progressPercentValue(): number {
-        if (!this.currentCompany) return 0;
-        return Math.min(100, Math.round((this.currentCompany.current_index / this.currentCompany.total) * 100));
-    }
+
 
     get lastCompany(): any {
         return this.currentCompany;
@@ -369,7 +382,10 @@ export class ScrapingComponent implements OnInit, OnDestroy {
             (typeof f.departement === 'string' ? f.departement : f.departement?.nom_departement) ||
             f.region;
 
-        if (!location || !query || !(0 < f.max_results && f.max_results <= 1000)) {
+
+        const maxResults = f.searchAll ? 1000 : f.max_results;
+
+        if (!location || !query || (!(0 < f.max_results && f.max_results <= 1000) && !f.searchAll)) {
             Swal.fire({
                 title: 'Erreur !',
                 text: 'Vous devez remplir tous les champs !',
@@ -395,20 +411,29 @@ export class ScrapingComponent implements OnInit, OnDestroy {
                 const res: any = await this.api.getStatus(this.source).toPromise();
                 if (res.in_progress) {
                     this.currentCompany = res.in_progress;
-                    this.progressPercent = Math.min(100, Math.round((res.in_progress.current_index / f.max_results) * 100));
+                    if (f.searchAll) {
+                        this.progressPercent = Math.min(100, Math.round((res.in_progress.current_index_commune / res.in_progress.max_communes) * 100));
+                    } else {
+                        this.progressPercent = Math.min(100, Math.round((res.in_progress.current_index / f.max_results) * 100));
+                    }
+
                 }
             } catch (e) {
                 console.error('Erreur récupération statut:', e);
             }
         }, 2500);
 
-        const timer = setInterval(() => this.updateElapsed(), 1000);
+        const timer = setInterval(() => {
+            this.updateElapsed();        // temps restant (elapsed)
+            this.updateTotalTime();      // temps écoulé (totalTimeSrapping)
+        }, 1000);
 
         // Stocker la souscription pour pouvoir l'annuler
         this.scrapingSubscription = this.api.scrape(this.source, {
             query: f.query.label!,
             location: location!,
-            max_results: f.max_results!
+            max_results: maxResults,
+            searchAll: f.searchAll!
         }).subscribe({
             next: (res) => {
                 this.handleScrapingComplete(res, timer);
@@ -418,7 +443,16 @@ export class ScrapingComponent implements OnInit, OnDestroy {
             }
         });
     }
+    private updateTotalTime() {
+        if (!this.startTime) return;
 
+        const elapsedSecs = Math.floor((Date.now() - this.startTime) / 1000);
+        const h = Math.floor(elapsedSecs / 3600);
+        const m = Math.floor((elapsedSecs % 3600) / 60);
+        const s = elapsedSecs % 60;
+
+        this.totalTimeSrapping = `${h}h ${m}m ${s}s`;
+    }
     private handleScrapingComplete(res: any, timer: any) {
 
         this.results = res.results || [];
@@ -488,6 +522,7 @@ export class ScrapingComponent implements OnInit, OnDestroy {
             cancelButtonText: 'Non, continuer'
         }).then((result) => {
             if (result.isConfirmed) {
+                // ⏱️ On lance le POST immédiatement
                 this.api.stopScraping(this.source).subscribe({
                     next: (response) => {
                         this.scrapingInProgress = false;
@@ -497,11 +532,37 @@ export class ScrapingComponent implements OnInit, OnDestroy {
                         clearInterval(this.statusInterval);
                         this.scrapingModal.hide();
 
+                        // ✅ On bloque 16s avec Swal
+                        let timerInterval: any;
                         Swal.fire({
-                            title: 'Arrêté !',
-                            text: response.message || 'Scrapping arrêté avec succès',
-                            icon: 'info',
-                            confirmButtonText: 'OK'
+                            title: 'Arrêt en cours...',
+                            html: 'Veuillez patienter <b>30</b> secondes.',
+                            timer: 30000,
+                            timerProgressBar: true,
+                            allowOutsideClick: false,
+                            allowEscapeKey: false,
+                            allowEnterKey: false,
+                            showConfirmButton: false,
+                            showCancelButton: false,
+                            didOpen: () => {
+                                const b = Swal.getHtmlContainer()?.querySelector('b');
+                                timerInterval = setInterval(() => {
+                                    if (b) {
+                                        const timeLeft = Math.ceil(Swal.getTimerLeft()! / 1000);
+                                        b.textContent = timeLeft.toString();
+                                    }
+                                }, 1000);
+                            },
+                            willClose: () => {
+                                clearInterval(timerInterval);
+                            }
+                        }).then(() => {
+                            Swal.fire({
+                                title: 'Arrêté !',
+                                text: response.message || 'Scrapping arrêté avec succès',
+                                icon: 'info',
+                                confirmButtonText: 'OK'
+                            });
                         });
                     },
                     error: (err) => {
@@ -515,6 +576,8 @@ export class ScrapingComponent implements OnInit, OnDestroy {
                 });
             }
         });
+
+
     }
 
     updateElapsed(final = false) {
