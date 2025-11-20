@@ -46,7 +46,21 @@
             <div *ngIf="error" class="alert alert-danger py-2">
               {{ error }}
             </div>
-
+            <div class="mb-4">
+              <label class="form-label">Vérification anti-bot</label>
+              <div class="input-group">
+                <span class="input-group-text">{{ captchaQuestion }} = ?</span>
+                <input
+                  type="text"
+                  class="form-control"
+                  placeholder="Votre réponse"
+                  formControlName="captcha"
+                />
+                <button class="btn btn-outline-secondary" type="button" (click)="generateCaptcha()">
+                  ↻
+                </button>
+              </div>
+            </div>
             <!-- Submit button -->
             <button class="btn btn-primary w-100 login-btn" [disabled]="loading">
               <span *ngIf="loading" class="spinner-border spinner-border-sm me-2"></span>

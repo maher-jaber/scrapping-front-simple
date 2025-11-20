@@ -35,7 +35,8 @@ declare var bootstrap: any;
 export class ScrapingComponent implements OnInit, OnDestroy {
 
 
-
+    currentSessionId = 0;
+    totalResultsCount = 0;
     private statusInterval: any;
     private scrapingInProgress = false; // Nouvelle variable pour suivre l'état
     private scrapingSubscription: any; // Pour gérer l'abonnement
@@ -57,7 +58,7 @@ export class ScrapingComponent implements OnInit, OnDestroy {
     itemsPerPage = 10;
     currentPage = 1;
     results: ScrapeResult[] = [];
-    paginated: ScrapeResult[] = [];
+   
 
     loading = false;
     startTime?: number;
@@ -84,7 +85,7 @@ export class ScrapingComponent implements OnInit, OnDestroy {
     messages: string[] = [
         "Scraping en cours...",
         "Analyse des données...",
-        "Presque terminé..."
+        "Collecte d'informations..."
     ];
     currentMessage: string = "";
     msgIndex = 0;
@@ -230,29 +231,43 @@ export class ScrapingComponent implements OnInit, OnDestroy {
         }
         this.exportModal.show();
     }
-    confirmExport() {
-        let filtered = this.results;
-
-        if (this.exportChoice === 'scrapped') {
-            filtered = this.results.filter(r => r.already_scrapped);
-        } else if (this.exportChoice === 'new') {
-            filtered = this.results.filter(r => !r.already_scrapped);
+    async confirmExport() {
+        if (!this.currentSessionId) {
+          await Swal.fire('Erreur', 'Aucun scraping actif', 'error');
+          return;
         }
-
-        if (!filtered.length) {
-
-            Swal.fire({
-                title: 'Erreur !',
-                text: '"Aucun résultat pour ce filtre"',
-                icon: 'error',
-                confirmButtonText: 'OK'
-            });
-            this.exportModal.hide();
+      
+        this.exportModal.hide();
+      
+        let allResults: ScrapeResult[] = [];
+        let page = 1;
+        const perPage = 500;
+        let totalPages = 1;
+      
+        try {
+          do {
+            const res: any = await this.api.getSessionResults(this.currentSessionId, page, perPage).toPromise();
+            allResults = allResults.concat(res.data);
+            totalPages = Math.ceil(res.total / perPage); // <-- CORRECTION ICI
+            page++;
+          } while (page <= totalPages);
+      
+          // appliquer le filtre exportChoice
+          let filtered = allResults;
+          if (this.exportChoice === 'scrapped') {
+            filtered = allResults.filter(r => r.already_scrapped);
+          } else if (this.exportChoice === 'new') {
+            filtered = allResults.filter(r => !r.already_scrapped);
+          }
+      
+          if (!filtered.length) {
+            Swal.fire('Erreur', 'Aucun résultat pour ce filtre', 'error');
             return;
-        }
-
-        const head = 'Nom;Adresse;Téléphone;Site Web;Plus Code;Horaires;Note;Scrapé à;Status';
-        const rows = filtered.map(r => ([
+          }
+      
+          // créer le CSV
+          const head = 'Nom;Adresse;Téléphone;Site Web;Plus Code;Horaires;Note;Scrapé à;Status';
+          const rows = filtered.map(r => ([
             r.name || 'N/A',
             r.address || 'N/A',
             r.phone || 'N/A',
@@ -262,18 +277,21 @@ export class ScrapingComponent implements OnInit, OnDestroy {
             r.note || 'N/A',
             this.formatFRDate(r.scraped_at) || 'N/A',
             r.already_scrapped ? 'Deja scrappé' : 'Nouveau'
-        ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(';')));
-
-        const csv = '\uFEFF' + [head, ...rows].join('\n');
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = this.buildCsvFilename();
-        a.click();
-
-        this.exportModal.hide();
-    }
-
+          ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(';')));
+      
+          const csv = '\uFEFF' + [head, ...rows].join('\n');
+          const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = this.buildCsvFilename();
+          a.click();
+      
+        } catch (err) {
+          console.error(err);
+          Swal.fire('Erreur', `Impossible de récupérer tous les résultats: ${err}`, 'error');
+        }
+      }
+    
     private _filterNaf(value: string): any[] {
         if (typeof value !== 'string') return [];
         const filterValue = value.toLowerCase();
@@ -329,6 +347,16 @@ export class ScrapingComponent implements OnInit, OnDestroy {
             this.form.get('departement')?.enable();
             this.form.get('ville')?.enable();
         }
+
+        if (this.form.get('region')?.value) {
+            // Si une région est sélectionnée, cocher searchAll et le désactiver
+            this.form.get('searchAll')?.setValue(true);
+            this.form.get('searchAll')?.disable();
+          } else {
+            // Si le champ est vide, réactiver la checkbox
+            this.form.get('searchAll')?.setValue(false);
+            this.form.get('searchAll')?.enable();
+          }
     }
 
     onDepChange($event: any) {
@@ -341,6 +369,15 @@ export class ScrapingComponent implements OnInit, OnDestroy {
             this.form.get('region')?.enable();
             this.form.get('ville')?.enable();
         }
+        if (this.form.get('departement')?.value) {
+            // Si un département est sélectionné, cocher searchAll et le désactiver
+            this.form.get('searchAll')?.setValue(true);
+            this.form.get('searchAll')?.disable();
+          } else {
+            // Si le champ est vide, réactiver la checkbox
+            this.form.get('searchAll')?.setValue(false);
+            this.form.get('searchAll')?.enable();
+          }
     }
 
     onVilleChange($event: any) {
@@ -352,16 +389,20 @@ export class ScrapingComponent implements OnInit, OnDestroy {
             this.form.get('region')?.enable();
             this.form.get('departement')?.enable();
         }
+        this.form.get('searchAll')?.setValue(false);
+        this.form.get('searchAll')?.enable();
     }
 
 
     reset() {
         this.form.reset({ query: '', region: '', departement: '', ville: '', max_results: 5 });
         this.regionDisabled = this.depDisabled = this.villeDisabled = false;
-        this.results = []; this.paginated = []; this.currentPage = 1; this.elapsed = '';
+        this.results = []; this.currentPage = 1; this.elapsed = '';
         this.form.get('region')?.enable();
         this.form.get('departement')?.enable();
         this.form.get('ville')?.enable();
+        this.form.get('searchAll')?.setValue(false);
+        this.form.get('searchAll')?.enable();
     }
 
 
@@ -374,8 +415,12 @@ export class ScrapingComponent implements OnInit, OnDestroy {
             // Si déjà en cours, on ne fait rien ou on propose d'arrêter
             return;
         }
-
+   
         const f = this.form.value;
+          // Si le contrôle est disabled => on considère searchAll = true
+        const searchAllControl = this.form.get('searchAll');
+        const searchAll = searchAllControl?.disabled ? true : !!searchAllControl?.value;
+
         const query = typeof f.query === 'string' ? f.query : f.query?.label;
         const location =
             f.ville ||
@@ -383,9 +428,9 @@ export class ScrapingComponent implements OnInit, OnDestroy {
             f.region;
 
 
-        const maxResults = f.searchAll ? 1000 : f.max_results;
+        const maxResults = searchAll ? 1000 : f.max_results;
 
-        if (!location || !query || (!(0 < f.max_results && f.max_results <= 1000) && !f.searchAll)) {
+        if (!location || !query || (!(0 < f.max_results && f.max_results <= 1000) && !searchAll)) {
             Swal.fire({
                 title: 'Erreur !',
                 text: 'Vous devez remplir tous les champs !',
@@ -411,7 +456,7 @@ export class ScrapingComponent implements OnInit, OnDestroy {
                 const res: any = await this.api.getStatus(this.source).toPromise();
                 if (res.in_progress) {
                     this.currentCompany = res.in_progress;
-                    if (f.searchAll) {
+                    if (searchAll) {
                         this.progressPercent = Math.min(100, Math.round((res.in_progress.current_index_commune / res.in_progress.max_communes) * 100));
                     } else {
                         this.progressPercent = Math.min(100, Math.round((res.in_progress.current_index / f.max_results) * 100));
@@ -433,7 +478,7 @@ export class ScrapingComponent implements OnInit, OnDestroy {
             query: f.query.label!,
             location: location!,
             max_results: maxResults,
-            searchAll: f.searchAll!
+            searchAll: searchAll!
         }).subscribe({
             next: (res) => {
                 this.handleScrapingComplete(res, timer);
@@ -454,28 +499,77 @@ export class ScrapingComponent implements OnInit, OnDestroy {
         this.totalTimeSrapping = `${h}h ${m}m ${s}s`;
     }
     private handleScrapingComplete(res: any, timer: any) {
-
-        this.results = res.results || [];
-        this.totalPages = Math.ceil(this.results.length / this.itemsPerPage);
-
-
-        this.currentPage = 1;
-        this.updatePage();
+        this.currentSessionId = res.session_id;
+        this.totalResultsCount = res.total_count || res.total || 0; // <-- CORRECTION ICI
+        this.results = [];
         this.loading = false;
         this.scrapingInProgress = false;
         clearInterval(timer);
         clearInterval(this.statusInterval);
         this.updateElapsed(true);
         this.scrapingModal.hide();
-        this.updateCities();
+        this.loadSessionResults(1);
+        
         Swal.fire({
-            title: 'Succès !',
-            text: 'Scraping terminé avec succès',
-            icon: 'success',
-            confirmButtonText: 'OK'
+          title: 'Scraping terminé',
+          html: `
+            Nouveau(s) : <b>${res.new_count}</b><br>
+            Déjà scrapé(s) : <b>${res.already_count}</b><br>
+            Total : <b>${res.total_count || res.total || 0}</b>
+          `,
+          icon: 'success',
+          confirmButtonText: 'OK'
         });
-    }
+      
+        // mettre à jour les villes scrapées
+        this.updateCities();
+      }
 
+    
+
+
+   
+
+ 
+
+   
+      loadSessionResults(page: number = 1) {
+        if (!this.currentSessionId) {
+          console.log('No session ID');
+          return;
+        }
+        
+        console.log('Loading page:', page, 'Session ID:', this.currentSessionId);
+        
+        this.api.getSessionResults(this.currentSessionId, page, this.itemsPerPage).subscribe((res: any) => {
+          console.log('API Response:', res);
+          
+          // CORRECTIONS APPLIQUÉES
+          this.results = res.data || [];
+          this.totalResultsCount = res.total || 0; // API retourne "total"
+          this.totalPages = Math.ceil(this.totalResultsCount / this.itemsPerPage);
+          this.currentPage = page;
+          
+          console.log('Pagination debug:', {
+            page,
+            totalPages: this.totalPages,
+            totalResults: this.totalResultsCount,
+            itemsPerPage: this.itemsPerPage,
+            resultsCount: this.results.length,
+            shouldShowPagination: this.totalPages > 1
+          });
+          
+          // Test pour voir si la pagination devrait s'afficher
+          if (this.totalPages > 1) {
+            console.log('✅ Pagination devrait être visible');
+          } else {
+            console.log('❌ Pagination ne devrait pas être visible (seulement 1 page)');
+          }
+        }, error => {
+          console.error('Error loading session results:', error);
+        });
+      }
+     
     private handleScrapingError(err: any, timer: any) {
         this.loading = false;
         this.scrapingInProgress = false;
@@ -612,57 +706,103 @@ export class ScrapingComponent implements OnInit, OnDestroy {
         }
     }
 
-    updatePage() {
-        const start = (this.currentPage - 1) * this.itemsPerPage;
-        this.paginated = this.results.slice(start, start + this.itemsPerPage);
-    }
+
     visiblePages(): (number | string)[] {
+        if (this.totalPages <= 1) {
+          return [1];
+        }
+        
         const pages: (number | string)[] = [];
         const delta = 2;
+        
+        // Toujours afficher la première page
+        pages.push(1);
+        
+        // Calculer les pages à afficher
         const left = Math.max(2, this.currentPage - delta);
         const right = Math.min(this.totalPages - 1, this.currentPage + delta);
-
-        pages.push(1);
-        if (left > 2) pages.push('...');
-        for (let i = left; i <= right; i++) pages.push(i);
-        if (right < this.totalPages - 1) pages.push('...');
-        if (this.totalPages > 1) pages.push(this.totalPages);
-
+        
+        // Ajouter "..." si nécessaire avant
+        if (left > 2) {
+          pages.push('...');
+        }
+        
+        // Ajouter les pages du milieu
+        for (let i = left; i <= right; i++) {
+          pages.push(i);
+        }
+        
+        // Ajouter "..." si nécessaire après
+        if (right < this.totalPages - 1) {
+          pages.push('...');
+        }
+        
+        // Toujours afficher la dernière page si plus d'une page
+        if (this.totalPages > 1) {
+          pages.push(this.totalPages);
+        }
+        
+        console.log('Visible pages calculation:', {
+          currentPage: this.currentPage,
+          totalPages: this.totalPages,
+          left,
+          right,
+          pages: pages
+        });
+        
         return pages;
-    }
+      }
+    
 
-    goToPage(p: number | string) {
-        if (p === '...') return;
-        this.currentPage = p as number;
-        this.updatePage();
-    }
+   
 
     pages(): number[] {
         const total = Math.ceil(this.results.length / this.itemsPerPage);
         return Array.from({ length: total }, (_, i) => i + 1);
     }
 
-    exportCSV() {
-        if (!this.results.length) return alert('Aucun résultat');
+    async exportCSV() {
+        if (!this.currentSessionId) return alert('Aucun scraping actif');
+      
+        this.loading = true;
+        let allResults: ScrapeResult[] = [];
+        let page = 1;
+        let totalPages = 1;
+      
+        do {
+          // on récupère chaque page
+          const res: any = await this.api.getSessionResults(this.currentSessionId, page, 500).toPromise();
+          allResults = allResults.concat(res.data);
+          totalPages = Math.ceil(res.total / 500); // <-- CORRECTION ICI
+          page++;
+        } while (page <= totalPages);
+      
+        this.loading = false;
+      
+        if (!allResults.length) return alert('Aucun résultat');
+      
+        // export CSV
         const head = 'Nom;Adresse;Téléphone;Site Web;Plus Code;Horaires;Note;Scrapé à;Status';
-        const rows = this.results.map(r => ([
-            r.name || 'N/A',
-            r.address || 'N/A',
-            r.phone || 'N/A',
-            r.website || 'N/A',
-            r.plus_code || 'N/A',
-            r.horaires || 'N/A',
-            r.note || 'N/A',
-            this.formatFRDate(r.scraped_at) || 'N/A',
-            r.already_scrapped ? 'Deja scrappé' : 'Nouveau'
+        const rows = allResults.map(r => ([
+          r.name || 'N/A',
+          r.address || 'N/A',
+          r.phone || 'N/A',
+          r.website || 'N/A',
+          r.plus_code || 'N/A',
+          r.horaires || 'N/A',
+          r.note || 'N/A',
+          this.formatFRDate(r.scraped_at) || 'N/A',
+          r.already_scrapped ? 'Deja scrappé' : 'Nouveau'
         ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(';')));
+      
         const csv = '\uFEFF' + [head, ...rows].join('\n');
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
         a.download = this.buildCsvFilename();
         a.click();
-    }
+      }
+    
     private buildCsvFilename(): string {
         const f = this.form.value;
 
@@ -693,19 +833,19 @@ export class ScrapingComponent implements OnInit, OnDestroy {
         return d.toLocaleString('fr-FR', { year: 'numeric', month: 'long', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
     }
 
-    goToNextPage() {
-        if (this.currentPage < this.totalPages) {
-            this.currentPage++;
-            this.updatePage();
+    goToPage(p: number | string) {
+        if (p === '...' || typeof p !== 'number') return;
+        if (p >= 1 && p <= this.totalPages && p !== this.currentPage) {
+          this.loadSessionResults(p);
         }
-    }
-
-    goToPrevPage() {
-        if (this.currentPage > 1) {
-            this.currentPage--;
-            this.updatePage();
-        }
-    }
+      }
+      goToNextPage() { 
+        if (this.currentPage < this.totalPages) this.loadSessionResults(this.currentPage + 1);
+      }
+      goToPrevPage() { 
+        if (this.currentPage > 1) this.loadSessionResults(this.currentPage - 1);
+      }
+    
     typeWriter() {
         if (this.charIndex < this.messages[this.msgIndex].length) {
             this.currentMessage += this.messages[this.msgIndex].charAt(this.charIndex);
@@ -727,6 +867,11 @@ export class ScrapingComponent implements OnInit, OnDestroy {
         }
     }
     ngOnDestroy() {
-        // Nettoyage si nécessaire
-    }
+        if (this.statusInterval) {
+          clearInterval(this.statusInterval);
+        }
+        if (this.scrapingSubscription) {
+          this.scrapingSubscription.unsubscribe();
+        }
+      }
 }

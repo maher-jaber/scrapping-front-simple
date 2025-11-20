@@ -9,6 +9,7 @@ export class AuthService {
   private api = environment.apiUrl;
   private accessKey = 'access_token';
   private refreshKey = 'refresh_token';
+  private role = 'role';
 
   constructor(private http: HttpClient, private router: Router) {}
 
@@ -22,9 +23,10 @@ export class AuthService {
     }).pipe(tap(tokens => this.storeTokens(tokens,username)));
   }
 
-  register(username: string, password: string) {
-    return this.http.post(`${this.api}/register`, { username, password });
+  register(username: string, password: string, role: string) {
+    return this.http.post(this.api+'/api/users', { username, password, role });
   }
+  
 
   refresh(): Observable<any> {
     const refreshToken = this.getRefreshToken();
@@ -60,12 +62,14 @@ export class AuthService {
     });
   }
 
-  storeTokens(tokens: { access_token: string; refresh_token?: string },userName:string) {
+  storeTokens(tokens: { access_token: string; refresh_token?: string; role:string; },userName:string) {
     localStorage.setItem('userName',userName);
+    localStorage.setItem('role',tokens.role);
     localStorage.setItem(this.accessKey, tokens.access_token);
     if (tokens.refresh_token) localStorage.setItem(this.refreshKey, tokens.refresh_token);
   }
   getUserName() { return localStorage.getItem('userName'); }
+  getRole() { return localStorage.getItem('role'); }
   getAccessToken() { return localStorage.getItem(this.accessKey); }
   getRefreshToken() { return localStorage.getItem(this.refreshKey); }
   isLoggedIn(): boolean { return !!this.getAccessToken(); }

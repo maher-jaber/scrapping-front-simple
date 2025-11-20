@@ -67,4 +67,9 @@ export class ApiService {
   getScrapedLocations() {
     return this.http.get<{ locations: { location: string, times_scraped: number }[] }>(`${this.api}/locations`);
 }
+getSessionResults(sessionId: number, page: number, perPage: number) {
+  return this.http.get<any>(
+    `${this.api}/scrape/results/${sessionId}?page=${page}&per_page=${perPage}`
+  );
+}
 }

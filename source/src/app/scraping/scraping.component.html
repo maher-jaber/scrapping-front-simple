@@ -35,8 +35,8 @@
             <mat-autocomplete #regionAuto="matAutocomplete" (optionSelected)="onRegionChange($event)">
               <mat-option *ngFor="let option of filteredRegionOptions | async" [value]="option">
                 {{ option }}
-                <span *ngIf="scrapedLocations.includes(option)"
-                class="badge bg-success ms-2">{{ scrapedLocationsMap[option] || 0 }} fois scrapé</span>
+                <span *ngIf="scrapedLocations.includes(option)" class="badge bg-success ms-2">{{
+                  scrapedLocationsMap[option] || 0 }} fois scrapé</span>
               </mat-option>
             </mat-autocomplete>
           </div>
@@ -56,8 +56,8 @@
               [displayWith]="displayDepartementFn.bind(this)">
               <mat-option *ngFor="let option of filteredDepartementOptions | async" [value]="option">
                 {{ option.code_departement }} - {{ option.nom_departement }} - {{ option.nom_region }}
-                <span *ngIf="scrapedLocations.includes(option.departement)"
-                class="badge bg-success ms-2">{{ scrapedLocationsMap[option.departement] || 0 }} fois scrapé</span>
+                <span *ngIf="scrapedLocations.includes(option.departement)" class="badge bg-success ms-2">{{
+                  scrapedLocationsMap[option.departement] || 0 }} fois scrapé</span>
               </mat-option>
             </mat-autocomplete>
           </div>
@@ -76,8 +76,8 @@
             <mat-autocomplete #villeAuto="matAutocomplete" (optionSelected)="onVilleChange($event)">
               <mat-option *ngFor="let option of filteredVilleOptions | async" [value]="option">
                 {{ option }}
-                <span *ngIf="scrapedLocations.includes(option)"
-                class="badge bg-success ms-2">{{ scrapedLocationsMap[option] || 0 }} fois scrapé</span>
+                <span *ngIf="scrapedLocations.includes(option)" class="badge bg-success ms-2">{{
+                  scrapedLocationsMap[option] || 0 }} fois scrapé</span>
               </mat-option>
             </mat-autocomplete>
           </div>
@@ -150,7 +150,7 @@
     <!-- Résumé résultats + export -->
     <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
       <div class="d-flex align-items-center flex-wrap gap-2">
-        <span class="badge bg-primary">{{ results.length }} résultat(s)</span>
+        <span class="badge bg-primary">{{ totalResultsCount }} résultat(s)</span>
         <span class="badge bg-info text-dark">Durée: {{ totalTimeSrapping }}</span>
       </div>
       <button class="btn btn-success" (click)="openExportModal()">
@@ -175,7 +175,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let r of paginated">
+          <tr *ngFor="let r of results">
             <!-- Nom -->
             <td>{{ r.name || 'N/A' }}</td>
 
@@ -187,7 +187,8 @@
               <ng-container *ngIf="r.phone; else na">
                 <div *ngFor="let num of r.phone.split(',')" class="d-flex align-items-center gap-1 mb-1">
                   <a [href]="'tel:'+num.trim()">{{ num.trim() }}</a>
-                  <span class="badge bg-secondary cursor-pointer" (click)="copyToClipboard(num.trim())" title="Copier le numéro">
+                  <span class="badge bg-secondary cursor-pointer" (click)="copyToClipboard(num.trim())"
+                    title="Copier le numéro">
                     <i class="bi bi-clipboard"></i>
                   </span>
                 </div>
@@ -199,8 +200,10 @@
             <td>
               <ng-container *ngIf="r.website; else n2">
                 <div class="d-flex align-items-center gap-1">
-                  <a [href]="r.website.startsWith('http') ? r.website : 'https://' + r.website" target="_blank">{{ r.website }}</a>
-                  <span class="badge bg-secondary cursor-pointer" (click)="copyToClipboard(r.website)" title="Copier le lien">
+                  <a [href]="r.website.startsWith('http') ? r.website : 'https://' + r.website" target="_blank">{{
+                    r.website }}</a>
+                  <span class="badge bg-secondary cursor-pointer" (click)="copyToClipboard(r.website)"
+                    title="Copier le lien">
                     <i class="bi bi-clipboard"></i>
                   </span>
                 </div>
@@ -238,13 +241,17 @@
     </div>
 
     <!-- Pagination -->
-    <nav class="mt-3">
+    <!-- Pagination -->
+    <nav class="mt-3" *ngIf="totalPages > 1">
       <ul class="pagination justify-content-center">
         <li class="page-item" [class.disabled]="currentPage === 1">
           <a class="page-link" (click)="goToPrevPage()" style="cursor:pointer;">&laquo;</a>
         </li>
-        <li *ngFor="let p of visiblePages()" class="page-item" [class.active]="p===currentPage" [class.disabled]="p==='...'">
-          <a class="page-link" (click)="p!=='...' && goToPage(p)" style="cursor:pointer;">{{ p }}</a>
+        <li *ngFor="let p of visiblePages()" class="page-item" [class.active]="p === currentPage"
+          [class.disabled]="p === '...'">
+          <a class="page-link" [style.cursor]="p==='...' ? 'default' : 'pointer'" (click)="p !== '...' && goToPage(p)">
+            {{ p }}
+          </a>
         </li>
         <li class="page-item" [class.disabled]="currentPage === totalPages">
           <a class="page-link" (click)="goToNextPage()" style="cursor:pointer;">&raquo;</a>
@@ -290,10 +297,12 @@
           🚀 Démarrage du moteur de scraping !!
         </h6>
 
-        <h6 *ngIf="currentCompany?.total > 0" >Commune: {{ currentCompany?.commune || 'Chargement...' }} ({{ currentCompany?.current_index_commune || 0 }} / {{ currentCompany?.max_communes || 0 }})</h6>
+        <h6 *ngIf="currentCompany?.total > 0">Commune: {{ currentCompany?.commune || 'Chargement...' }} ({{
+          currentCompany?.current_index_commune || 0 }} / {{ currentCompany?.max_communes || 0 }})</h6>
 
         <h6 *ngIf="currentCompany?.total > 0">
-          Dernière entreprise scrappée <span *ngIf="!(currentCompany?.max_communes > 0)">({{ currentCompany?.current_index || 0 }} / {{ currentCompany?.total || 0 }})</span> :
+          Dernière entreprise scrappée <span *ngIf="!(currentCompany?.max_communes > 0)">({{
+            currentCompany?.current_index || 0 }} / {{ currentCompany?.total || 0 }})</span> :
         </h6>
 
         <div *ngIf="currentCompany?.total > 0" class="card p-2 mb-2 shadow-sm">
@@ -324,13 +333,13 @@
 <div class="modal fade" id="exportModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered modal-md">
     <div class="modal-content border-0 shadow-sm">
-      
+
       <!-- Header -->
       <div class="modal-header bg-primary text-white">
         <h5 class="modal-title">Exporter les résultats</h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
       </div>
-      
+
       <!-- Body -->
       <div class="modal-body">
         <p class="mb-3">Sélectionnez le type de résultats à exporter :</p>
@@ -338,7 +347,7 @@
 
           <!-- Tous -->
           <label class="card border p-3 text-center flex-fill cursor-pointer"
-                 [class.border-primary]="exportChoice === 'all'">
+            [class.border-primary]="exportChoice === 'all'">
             <input type="radio" name="exportFilter" value="all" [(ngModel)]="exportChoice" hidden>
             <div class="fw-bold mb-1">Tous</div>
             <small class="text-muted">Exporter tous les résultats</small>
@@ -346,7 +355,7 @@
 
           <!-- Déjà scrappé -->
           <label class="card border p-3 text-center flex-fill cursor-pointer"
-                 [class.border-primary]="exportChoice === 'scrapped'">
+            [class.border-primary]="exportChoice === 'scrapped'">
             <input type="radio" name="exportFilter" value="scrapped" [(ngModel)]="exportChoice" hidden>
             <div class="fw-bold mb-1">Déjà scrappé</div>
             <small class="text-muted">Exporter uniquement les résultats scrappés</small>
@@ -354,7 +363,7 @@
 
           <!-- Nouveau -->
           <label class="card border p-3 text-center flex-fill cursor-pointer"
-                 [class.border-primary]="exportChoice === 'new'">
+            [class.border-primary]="exportChoice === 'new'">
             <input type="radio" name="exportFilter" value="new" [(ngModel)]="exportChoice" hidden>
             <div class="fw-bold mb-1">Nouveau</div>
             <small class="text-muted">Exporter uniquement les nouveaux résultats</small>
@@ -362,7 +371,7 @@
 
         </div>
       </div>
-      
+
       <!-- Footer -->
       <div class="modal-footer">
         <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>

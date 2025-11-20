@@ -1,0 +1,100 @@
+<div class="container py-4">
+  <div class="row">
+    <!-- 📋 Liste des utilisateurs -->
+    <div class="col-12 col-lg-8 mb-4">
+      <div class="card shadow">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">Utilisateurs</h5>
+          <button class="btn btn-sm btn-primary" (click)="resetForm()" *ngIf="selectedUser">+ Ajouter</button>
+        </div>
+        <div class="card-body p-0">
+          <table class="table table-striped mb-0">
+            <thead>
+              <tr>
+                <th>Nom d'utilisateur</th>
+                <th>Rôle</th>
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let u of users">
+                <td>{{ u.username }}</td>
+                <td>
+                  <span class="badge bg-secondary" *ngIf="u.role==='user'">User</span>
+                  <span class="badge bg-info text-dark" *ngIf="u.role==='supervisor'">Supervisor</span>
+                  <span class="badge bg-success" *ngIf="u.role==='admin'">Admin</span>
+                </td>
+                <td class="text-end">
+                  <button class="btn btn-sm btn-warning me-2" (click)="editUser(u)">Modifier</button>
+                  <button class="btn btn-sm btn-secondary me-2" (click)="openPasswordModal(u)">Mot de passe</button>
+                  <button class="btn btn-sm btn-danger" (click)="deleteUser(u)">Supprimer</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ✏️ Formulaire ajout/modif -->
+    <div class="col-12 col-lg-4">
+      <div class="card shadow">
+        <div class="card-header">
+          <h5 class="mb-0">
+            {{ selectedUser ? 'Modifier' : 'Ajouter un utilisateur' }}
+          </h5>
+        </div>
+        <div class="card-body">
+          <form [formGroup]="form" (ngSubmit)="submit()">
+            <div class="mb-3">
+              <label>Nom d'utilisateur</label>
+              <input class="form-control" formControlName="username" />
+            </div>
+
+            <div class="mb-3" *ngIf="!selectedUser">
+              <label>Mot de passe</label>
+              <input type="password" class="form-control" formControlName="password" />
+            </div>
+
+            <div class="mb-3">
+              <label>Rôle</label>
+              <select class="form-select" formControlName="role">
+                <option value="user">User</option>
+                <option value="supervisor">Supervisor</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+
+            <div *ngIf="message" class="alert alert-success py-2">{{ message }}</div>
+            <div *ngIf="error" class="alert alert-danger py-2">{{ error }}</div>
+
+            <button class="btn btn-success w-100">
+              {{ selectedUser ? 'Enregistrer les modifications' : 'Ajouter' }}
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- Modal changement de mot de passe -->
+<div class="modal fade" id="passwordModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Changer le mot de passe de {{ passwordTarget?.username }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label>Nouveau mot de passe</label>
+          <input type="password" [(ngModel)]="newPassword" class="form-control" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+        <button class="btn btn-success" (click)="changePassword()">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+</div>
