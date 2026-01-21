@@ -21,6 +21,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTableModule, MatTableDataSource } from '@angular/material/table';
 import { MatPaginator, MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatSort, MatSortModule } from '@angular/material/sort';
+import { finalize } from 'rxjs/operators';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 
 @Component({
   selector: 'app-historique',
@@ -37,7 +39,7 @@ import { MatSort, MatSortModule } from '@angular/material/sort';
     MatNativeDateModule,
     MatButtonModule,
     MatIconModule,
-
+    MatProgressBarModule,
     // Material Table
     MatTableModule,       // pour <mat-table>
     MatPaginatorModule,   // pour <mat-paginator>
@@ -79,6 +81,15 @@ export class HistoriqueComponent implements OnInit {
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
+
+  // dans la classe
+  isLoadingTable = false;
+
+  isExporting = false;
+  exportProgress = 0;       // 0..100
+  exportTotal: number | null = null;
+
+
 
   constructor(private api: ApiService, private http: HttpClient) { }
 
@@ -170,7 +181,6 @@ export class HistoriqueComponent implements OnInit {
   loadPage(p: number, sort?: { active: string; direction: string }) {
     this.page = p;
   
-    // Tri
     let sortBy: string | undefined = undefined;
     let sortOrder: 'asc' | 'desc' | undefined = undefined;
     if (sort && (sort.direction === 'asc' || sort.direction === 'desc')) {
@@ -178,9 +188,10 @@ export class HistoriqueComponent implements OnInit {
       sortOrder = sort.direction;
     }
   
-    // Convertir dates en YYYY-MM-DD si elles existent
     const dateFromStr = this.dateFrom ? this.formatDateForAPI(this.dateFrom) : undefined;
     const dateToStr = this.dateTo ? this.formatDateForAPI(this.dateTo) : undefined;
+  
+    this.isLoadingTable = true;
   
     this.api.historique({
       page: this.page,
@@ -192,7 +203,9 @@ export class HistoriqueComponent implements OnInit {
       date_to: dateToStr,
       sort_by: sortBy,
       sort_order: sortOrder
-    }).subscribe(res => {
+    })
+    .pipe(finalize(() => (this.isLoadingTable = false)))
+    .subscribe(res => {
       this.rows = res.historique;
       this.total = res.total;
       this.perPage = res.per_page;
@@ -200,6 +213,7 @@ export class HistoriqueComponent implements OnInit {
       this.dataSource.data = this.rows;
     });
   }
+  
   
   // Fonction utilitaire pour convertir les dates
   private formatDateForAPI(date: Date | string): string {
@@ -234,23 +248,61 @@ export class HistoriqueComponent implements OnInit {
   }
 
   exportCSV() {
-    // pagination par lots pour gros exports
+    if (this.isExporting) return;
+  
+    this.isExporting = true;
+    this.exportProgress = 0;
+    this.exportTotal = null;
+  
     const perPage = 500;
     let p = 1;
     const all: HistoryRow[] = [];
+  
+    const dateFromStr = this.dateFrom ? this.formatDateForAPI(this.dateFrom) : undefined;
+    const dateToStr = this.dateTo ? this.formatDateForAPI(this.dateTo) : undefined;
+  
     const loadNext = () => {
       this.api.historique({
-        page: p, per_page: perPage,
-        query: this.filterQuery, location: this.filterLocation, source: this.filterSource,
-        date_from: this.dateFrom || undefined, date_to: this.dateTo || undefined
-      }).subscribe(res => {
-        all.push(...res.historique);
-        if (res.historique.length < perPage) this.makeCsv(all);
-        else { p++; loadNext(); }
+        page: p,
+        per_page: perPage,
+        query: this.filterQuery || undefined,
+        location: this.filterLocation || undefined,
+        source: this.filterSource || undefined,
+        date_from: dateFromStr,
+        date_to: dateToStr
+      }).subscribe({
+        next: (res) => {
+          if (this.exportTotal == null && typeof res.total === 'number') {
+            this.exportTotal = res.total;
+          }
+  
+          all.push(...res.historique);
+  
+          if (this.exportTotal && this.exportTotal > 0) {
+            const pct = Math.round((all.length / this.exportTotal) * 100);
+            this.exportProgress = Math.min(99, Math.max(0, pct)); // 99% jusqu'au fichier final
+          }
+  
+          if (res.historique.length < perPage) {
+            this.makeCsv(all);
+            this.exportProgress = 100;
+            this.isExporting = false;
+          } else {
+            p++;
+            loadNext();
+          }
+        },
+        error: () => {
+          this.isExporting = false;
+          this.exportTotal = null;
+          alert("Erreur pendant l'export CSV");
+        }
       });
     };
+  
     loadNext();
   }
+  
   onPageChange(event: PageEvent) {
     this.perPage = event.pageSize;
     this.loadPage(event.pageIndex + 1);
